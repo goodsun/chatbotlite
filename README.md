@@ -59,6 +59,12 @@ System Promptにドキュメント全文を貼り付ければ、
 - 基本的なXSSサニタイズ内蔵
 - localStorage でAPIキー・設定を保存（オプトイン）
 
+## 注意事項
+
+- Gemini API無料枠にはレート制限があります（gemini-2.5-flash: 20回/分）
+- 制限に達すると数秒〜数十秒の待機が必要です
+- 詳細: [Gemini API Rate Limits](https://ai.google.dev/gemini-api/docs/rate-limits)
+
 ## セキュリティ
 
 - APIキーはブラウザからGemini APIに直接送信されます（サーバーを経由しません）
