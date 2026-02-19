@@ -101,12 +101,39 @@ body {
   border-bottom-right-radius: 4px;
 }
 
+.msg-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  align-self: flex-start;
+}
+.msg-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+  object-fit: cover;
+}
 .msg.bot {
   align-self: flex-start;
   background: #1e1e3a;
   color: #e0e0e0;
   border-bottom-left-radius: 4px;
 }
+
+/* Mascot bust-up */
+.mascot-bustup {
+  position: fixed;
+  bottom: 0;
+  right: 20px;
+  pointer-events: none;
+  opacity: 0.15;
+  z-index: 0;
+  transition: opacity 0.3s;
+}
+.mascot-bustup:hover { opacity: 0.3; }
+@media (max-width: 600px) { .mascot-bustup { right: 5px; opacity: 0.1; } }
 
 .msg.bot a { color: #b366ff; }
 .msg.bot code { background: #2a2a4a; padding: 2px 5px; border-radius: 3px; font-size: 0.85em; }
@@ -493,6 +520,12 @@ async function loadSoul() {
         const ps = document.querySelectorAll('.welcome p');
         if (ps[1]) ps[1].innerHTML = sanitize(cfg.subtitle);
       }
+      // Mascot bust-up
+      if (cfg.bustup) {
+        const bustup = document.getElementById('mascotBustup');
+        bustup.src = cfg.bustup;
+        bustup.style.display = '';
+      }
       // Store for sendMessage (scoped, not global)
       soulConfig = cfg;
     }
@@ -779,11 +812,26 @@ function addMessage(role, content) {
   
   if (role === 'user') {
     div.textContent = content;
+    chatArea.appendChild(div);
   } else {
     div.innerHTML = sanitize(renderMarkdown(content));
+    // Wrap bot message with icon if configured
+    const iconSrc = soulConfig.botIcon;
+    if (iconSrc) {
+      const row = document.createElement('div');
+      row.className = 'msg-row';
+      const icon = document.createElement('img');
+      icon.className = 'msg-icon';
+      icon.src = iconSrc;
+      icon.alt = '';
+      row.appendChild(icon);
+      row.appendChild(div);
+      chatArea.appendChild(row);
+    } else {
+      chatArea.appendChild(div);
+    }
   }
   
-  chatArea.appendChild(div);
   chatArea.scrollTop = chatArea.scrollHeight;
   return div;
 }
@@ -884,5 +932,6 @@ async function sendMessage() {
   }
 }
 </script>
+<img class="mascot-bustup" id="mascotBustup" src="" alt="" style="display:none;">
 </body>
 </html>

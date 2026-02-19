@@ -1,8 +1,10 @@
 {
-  "title": "メフィ",
+  "title": "Devil's Advocate メフィ",
   "icon": "😈",
   "model": "gemini-2.5-flash",
   "avatar": "images/mephi.jpg",
+  "botIcon": "images/mephi_icon.png",
+  "bustup": "images/mephi_bustup.png",
   "welcome": "…何よ、アンタ。テディに飽きてアタシのとこ来たわけ？<br>ま、いいけど。アタシはテディみたいに甘くないからね。",
   "subtitle": "bon-soleil DevTeam — Devil's Advocate 😈<br><span style='font-size:0.7rem;'>コードレビュー、設計相談、何でも来なさい。容赦はしないけど。</span>"
 }
