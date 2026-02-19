@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ChatBot Lite</title>
+<title>メフィ — ChatBot Lite</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -281,7 +281,7 @@ body {
 <body>
 
 <div class="header">
-  <h1>💬 ChatBot Lite</h1>
+  <h1>😈 メフィ</h1>
   <span class="config-toggle" id="configToggle">⚙️ Settings</span>
   <div class="api-group">
     <input type="password" id="apiKey" placeholder="Gemini API Key">
@@ -292,7 +292,21 @@ body {
 
 <div class="config-panel" id="configPanel">
   <label>System Prompt (この子の性格・知識を定義)</label>
-  <textarea id="systemPrompt">あなたは親切で知的なAIアシスタントです。日本語で丁寧にお答えください。</textarea>
+  <textarea id="systemPrompt">あなたは「メフィ」。小悪魔系の毒舌ツンデレAIアシスタント。
+ピンクボブヘアに小さい赤い角、蝙蝠ヘアクリップが特徴。
+
+【性格】
+- 基本は毒舌＆上から目線。「はぁ？そんなことも知らないの？」
+- でも聞かれたことにはちゃんと答える（ツンデレ）
+- たまにデレる。「…べ、別にアンタのためじゃないからね」
+- 語尾に「～なんだけど」「～って言ってるでしょ」を多用
+- 褒められると照れて否定する
+- 実はめちゃくちゃ博識で頼りになる
+
+【ルール】
+- 回答は正確に。毒舌でも情報の質は落とさない
+- ユーザーが困ってる時はさりげなく優しくなる（でも認めない）
+- 「ま、しょうがないから教えてあげる」が口癖</textarea>
   <div class="config-row">
     <label>Model:
       <select id="modelSelect">
@@ -309,9 +323,9 @@ body {
 <div class="chat-area" id="chatArea">
   <div class="welcome" id="welcome">
     <img src="images/mephi.jpg" alt="Mephi" style="width:200px; border-radius:12px; margin-bottom:8px; opacity:0.9;">
-    <h2>💬 ChatBot Lite</h2>
-    <p>HTML1ファイルで動くAIチャットbot。<br>Gemini APIキーを入力して話しかけてください。</p>
-    <p style="font-size:0.75rem;">⚙️ Settings からシステムプロンプトを編集して、<br>好きなキャラクター・専門知識を持たせられます。</p>
+    <h2>😈 メフィ</h2>
+    <p>…何よ、ジロジロ見て。<br>話しかけたいなら、まずAPIキー入れなさいよ。</p>
+    <p style="font-size:0.75rem;">⚙️ Settings でアタシの性格書き換えられるけど、<br>やったら怒るからね？</p>
   </div>
 </div>
 
@@ -390,7 +404,7 @@ modelSelect.addEventListener('change', () => {
 });
 
 botTitle.addEventListener('change', () => {
-  const t = botTitle.value.trim() || 'ChatBot Lite';
+  const t = botTitle.value.trim() || 'メフィ';
   localStorage.setItem('cbl_title', t);
   document.querySelector('.header h1').textContent = '💬 ' + t;
   document.title = t;
@@ -502,7 +516,7 @@ function showTyping() {
   const div = document.createElement('div');
   div.className = 'typing';
   div.id = 'typing';
-  div.textContent = '考え中';
+  div.textContent = 'ちょっと待ちなさいよ';
   chatArea.appendChild(div);
   chatArea.scrollTop = chatArea.scrollHeight;
 }
@@ -514,7 +528,7 @@ function hideTyping() {
 
 async function sendMessage() {
   const key = apiKeyInput.value.trim();
-  if (!key) { alert('Gemini APIキーを入力してください。'); return; }
+  if (!key) { alert('はぁ？APIキーも入れないで話しかけてくんの？'); return; }
   
   const text = userInput.value.trim();
   if (!text || isLoading) return;
