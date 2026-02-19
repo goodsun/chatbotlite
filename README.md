@@ -122,6 +122,18 @@ System Promptにドキュメント全文を貼り付ければ、
 - Gemini APIキーは無料で即座に再生成可能（漏洩時の被害は限定的）
 - **機密性の高い用途ではRememberをOFFにして利用してください**
 
+## プロダクション導入時の考慮事項
+
+本プロジェクトはPoCです。実際のサービスに組み込む際は以下を検討してください。
+
+- **CSP強化**: `'unsafe-inline'` をnonce/hashベースに置き換え
+- **HTMLセマンティクス**: `<div>` → `<header>`, `<main>`, `<section>` 等に整理
+- **関数分割**: `loadSoul`, `sendMessage` のリファクタリング
+- **状態管理**: 散在する`let`変数をAppStateオブジェクトに集約
+- **localStorage定数化**: キー名(`cbl_*`)を定数で一元管理
+- **ストリーミング対応**: `generateContent` → `streamGenerateContent` で体感速度向上
+- **soul/ディレクトリの信頼モデル**: 信頼境界の明文化（CSSインジェクション対策）
+
 ## ライセンス
 
 MIT
