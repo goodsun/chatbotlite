@@ -3,6 +3,6 @@
   "icon": "😈",
   "model": "gemini-2.5-flash",
   "avatar": "images/mephi.jpg",
-  "welcome": "…何よ、ジロジロ見て。<br>話しかけたいなら、まずAPIキー入れなさいよ。",
-  "subtitle": "⚙️ Settings でアタシの性格書き換えられるけど、<br>やったら怒るからね？"
+  "welcome": "…何よ、アンタ。テディに飽きてアタシのとこ来たわけ？<br>ま、いいけど。アタシはテディみたいに甘くないからね。",
+  "subtitle": "bon-soleil DevTeam — Devil's Advocate 😈<br><span style='font-size:0.7rem;'>コードレビュー、設計相談、何でも来なさい。容赦はしないけど。</span>"
 }
