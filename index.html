@@ -479,10 +479,14 @@ function deobfuscateKey(stored) { try { return atob(stored).split('').reverse().
 // --- Init ---
 const isRemember = localStorage.getItem('cbl_remember') === '1';
 rememberCb.checked = isRemember;
-if (isRemember) apiKeyInput.value = deobfuscateKey(localStorage.getItem('cbl_api_key') || '');
+if (isRemember) {
+  apiKeyInput.value = deobfuscateKey(localStorage.getItem('cbl_api_key') || '');
+}
 
 // --- Soul loader ---
 async function loadSoul() {
+  const soulErrors = [];
+
   // persona.txt → system prompt
   try {
     const res = await fetch('./soul/persona.txt');
@@ -490,9 +494,9 @@ async function loadSoul() {
       const text = await res.text();
       if (text.trim()) systemPrompt.value = text.trim();
     }
-  } catch(e) {}
+  } catch(e) { soulErrors.push('persona.txt'); }
 
-  // config.json → model, title, temperature etc.
+  // config.json → model, title, temperature, etc.
   try {
     const res = await fetch('./soul/config.json');
     if (res.ok) {
@@ -529,7 +533,7 @@ async function loadSoul() {
       // Store for sendMessage (scoped, not global)
       soulConfig = cfg;
     }
-  } catch(e) {}
+  } catch(e) { soulErrors.push('config.json'); }
 
   // memory.txt → initial memory (seed)
   try {
@@ -538,7 +542,7 @@ async function loadSoul() {
       const text = await res.text();
       if (text.trim() && !memory) memory = text.trim();
     }
-  } catch(e) {}
+  } catch(e) { soulErrors.push('memory.txt'); }
 
   // knowledge.txt → append to system prompt
   try {
@@ -549,7 +553,7 @@ async function loadSoul() {
         systemPrompt.value += '\n\n【参考知識】\n' + text.trim();
       }
     }
-  } catch(e) {}
+  } catch(e) { soulErrors.push('knowledge.txt'); }
 
   // style.css → inject
   try {
@@ -562,11 +566,23 @@ async function loadSoul() {
         document.head.appendChild(style);
       }
     }
-  } catch(e) {}
+  } catch(e) { soulErrors.push('style.css'); }
+
+  // Notify user if soul files failed to load (network errors only — 404 is OK)
+  if (soulErrors.length > 0) {
+    console.warn('Soul files failed to load:', soulErrors);
+    const notice = document.createElement('div');
+    notice.className = 'msg system';
+    notice.textContent = `⚠️ 設定ファイル読み込みエラー: ${soulErrors.join(', ')}（チャット機能は使えます）`;
+    chatArea.appendChild(notice);
+  }
 }
 
 // Load soul, then apply localStorage overrides
 await loadSoul();
+
+// Validate stored API key on startup
+if (apiKeyInput.value.trim()) validateApiKey();
 
 // Restore chat history from previous session
 const savedHistory = localStorage.getItem('cbl_history');
@@ -655,7 +671,42 @@ rememberCb.addEventListener('change', async () => {
 
 apiKeyInput.addEventListener('change', () => {
   if (rememberCb.checked) localStorage.setItem('cbl_api_key', obfuscateKey(apiKeyInput.value));
+  validateApiKey();
 });
+
+apiKeyInput.addEventListener('blur', () => {
+  validateApiKey();
+});
+
+// --- API Key Validation ---
+let validateTimer = null;
+async function validateApiKey() {
+  const key = apiKeyInput.value.trim();
+  if (!key) {
+    apiKeyInput.style.borderColor = '#3a2a5a';
+    return;
+  }
+  // Debounce
+  if (validateTimer) clearTimeout(validateTimer);
+  validateTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1',
+        { method: 'GET', headers: { 'x-goog-api-key': key } }
+      );
+      if (res.ok) {
+        apiKeyInput.style.borderColor = '#22c55e';
+        apiKeyInput.title = '✅ APIキー有効';
+      } else {
+        apiKeyInput.style.borderColor = '#ef4444';
+        apiKeyInput.title = '❌ APIキーが無効です';
+      }
+    } catch {
+      apiKeyInput.style.borderColor = '#f59e0b';
+      apiKeyInput.title = '⚠️ 接続できません';
+    }
+  }, 500);
+}
 
 systemPrompt.addEventListener('change', () => {
   localStorage.setItem('cbl_system_prompt', systemPrompt.value);
@@ -823,7 +874,10 @@ async function summarizeIfNeeded(key) {
       if (summary) {
         memory = summary.trim();
         try { localStorage.setItem('cbl_memory', memory); }
-        catch(e) { console.warn('localStorage quota exceeded'); }
+        catch(e) {
+          console.warn('localStorage quota exceeded, memory not saved');
+          addMessage('bot', '⚠️ ブラウザの保存容量が上限に達し、記憶を保存できませんでした。「🗑 記憶クリア」または「🗑 履歴クリア」で空きを作ってください。');
+        }
       }
     }
   } catch(e) { /* silent fail */ } finally { isSummarizing = false; }
@@ -952,7 +1006,10 @@ async function sendMessage() {
     
     // Save history & trigger summary
     try { localStorage.setItem('cbl_history', JSON.stringify(chatHistory.slice(-100))); }
-    catch(e) { console.warn('localStorage quota exceeded, history not saved'); }
+    catch(e) {
+      console.warn('localStorage quota exceeded, history not saved');
+      addMessage('bot', '⚠️ ブラウザの保存容量が上限に達しました。「🗑 履歴クリア」で空きを作ることをお勧めします。');
+    }
     summarizeIfNeeded(key);
     
   } catch (e) {
