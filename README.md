@@ -10,7 +10,7 @@
 
 ## 特徴
 
-- 📄 **HTML1ファイル完結** — 外部依存ゼロ、CDNも不要
+- 📄 **HTML1ファイル完結** — 依存はDOMPurify CDNのみ
 - 🔑 **BYOK** (Bring Your Own Key) — ユーザーのGemini APIキーで動作
 - 💰 **サーバーコスト$0** — クライアント→Gemini API直通
 - 🎭 **カスタマイズ自在** — システムプロンプトでキャラ・知識を自由に設定
@@ -91,7 +91,7 @@ System Promptにドキュメント全文を貼り付ければ、
 - Gemini API (`generateContent`) をブラウザから直接呼び出し
 - 会話履歴をメモリ保持（マルチターン対応）
 - 軽量Markdownレンダラー内蔵
-- 基本的なXSSサニタイズ内蔵
+- [DOMPurify](https://github.com/cure53/DOMPurify) によるXSSサニタイズ
 - localStorage でAPIキー・設定を保存（オプトイン）
 
 ## 注意事項
@@ -105,8 +105,22 @@ System Promptにドキュメント全文を貼り付ければ、
 - APIキーはブラウザからGemini APIに直接送信されます（サーバーを経由しません）
 - ⚠️ APIキーはURLクエリパラメータに含まれるため、ブラウザ履歴やDevToolsに残る可能性があります（Gemini APIの仕様上回避不可）
 - キーが漏洩した場合は [Google AI Studio](https://aistudio.google.com/apikey) で即座に再生成できます
-- localStorage保存はオプトイン（確認ダイアログ付き）
-- bot応答はXSSサニタイズ済み
+- bot応答は [DOMPurify](https://github.com/cure53/DOMPurify) でサニタイズ済み
+
+### APIキーの保存について
+
+「Remember」チェック時、APIキーは **localStorage** に保存されます（sessionStorageではなく）。
+
+**なぜlocalStorageか:**
+- ChatBot Liteは「HTMLを開くだけで動く」が設計思想。タブを閉じるたびにAPIキー再入力では実用に耐えない
+- sessionStorageはタブ単位で消えるため、ブックマークして日常的に使うチャットbotには不向き
+- localStorage保存はオプトイン（デフォルトOFF + 確認ダイアログでリスク告知）
+
+**リスクと対策:**
+- 同一オリジンのJavaScriptからアクセス可能（XSSや悪意ある拡張機能のリスク）
+- 対策: DOMPurifyによるサニタイズ、dangerousなタグ/属性の除去、CSP設定推奨
+- Gemini APIキーは無料で即座に再生成可能（漏洩時の被害は限定的）
+- **機密性の高い用途ではRememberをOFFにして利用してください**
 
 ## ライセンス
 
