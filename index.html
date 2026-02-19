@@ -582,7 +582,10 @@ async function sendMessage() {
     
   } catch (e) {
     hideTyping();
-    addMessage('bot', `⚠️ 通信エラー: ${e.message}`);
+    const errDiv2 = document.createElement('div');
+    errDiv2.className = 'msg bot';
+    errDiv2.textContent = `⚠️ 通信エラー: ${e.message}`;
+    chatArea.appendChild(errDiv2);
     chatHistory.pop();
   } finally {
     isLoading = false;
