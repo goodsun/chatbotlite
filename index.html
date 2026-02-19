@@ -495,7 +495,7 @@ sendBtn.addEventListener('click', () => sendMessage());
 
 rememberCb.addEventListener('change', () => {
   if (rememberCb.checked) {
-    if (!confirm('⚠️ API key will be stored in localStorage.\n\nIt could be accessed by browser extensions or XSS.\nRegenerate at Google AI Studio anytime.\n\nProceed?')) {
+    if (!confirm('⚠️ Security Notice\n\n• API key is stored in browser localStorage (accessible by extensions/XSS)\n• API key is sent via URL parameter (visible in browser history & DevTools)\n• For sensitive use, keep Remember OFF and clear history after use\n• Regenerate key anytime at Google AI Studio\n\nProceed?')) {
       rememberCb.checked = false;
       return;
     }
