@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src https://generativelanguage.googleapis.com 'self'; img-src 'self' data: https:; font-src 'self';">
 <title>ChatBot Lite</title>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <style>
@@ -359,10 +360,14 @@ const systemPrompt = document.getElementById('systemPrompt');
 const modelSelect = document.getElementById('modelSelect');
 const botTitle = document.getElementById('botTitle');
 
+// --- Key obfuscation (not encryption — just hides from casual DevTools inspection) ---
+function obfuscateKey(key) { return btoa(key.split('').reverse().join('')); }
+function deobfuscateKey(stored) { try { return atob(stored).split('').reverse().join(''); } catch { return ''; } }
+
 // --- Init ---
 const isRemember = localStorage.getItem('cbl_remember') === '1';
 rememberCb.checked = isRemember;
-if (isRemember) apiKeyInput.value = localStorage.getItem('cbl_api_key') || '';
+if (isRemember) apiKeyInput.value = deobfuscateKey(localStorage.getItem('cbl_api_key') || '');
 
 // --- Soul loader ---
 async function loadSoul() {
@@ -495,7 +500,7 @@ rememberCb.addEventListener('change', () => {
       return;
     }
     localStorage.setItem('cbl_remember', '1');
-    localStorage.setItem('cbl_api_key', apiKeyInput.value);
+    localStorage.setItem('cbl_api_key', obfuscateKey(apiKeyInput.value));
   } else {
     localStorage.setItem('cbl_remember', '0');
     localStorage.removeItem('cbl_api_key');
@@ -503,7 +508,7 @@ rememberCb.addEventListener('change', () => {
 });
 
 apiKeyInput.addEventListener('change', () => {
-  if (rememberCb.checked) localStorage.setItem('cbl_api_key', apiKeyInput.value);
+  if (rememberCb.checked) localStorage.setItem('cbl_api_key', obfuscateKey(apiKeyInput.value));
 });
 
 systemPrompt.addEventListener('change', () => {
