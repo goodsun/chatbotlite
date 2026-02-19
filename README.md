@@ -1,5 +1,9 @@
 # ChatBot Lite 💬
 
+<p align="center">
+  <img src="images/mephi.jpg" alt="Mephi - ChatBot Lite mascot" width="400">
+</p>
+
 **HTML1ファイルで動くAIチャットbot。**
 
 サーバー不要。インフラ代$0。HTMLファイルを開くだけで動く。
