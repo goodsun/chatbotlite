@@ -534,6 +534,7 @@ async function sendMessage() {
   if (!text || isLoading) return;
   
   userInput.value = '';
+  userInput.dispatchEvent(new Event('input'));
   userInput.style.height = 'auto';
   isLoading = true;
   sendBtn.disabled = true;
