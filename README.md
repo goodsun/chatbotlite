@@ -59,16 +59,23 @@ soul/
 }
 ```
 
-**複数キャラ運用:**
-```
-/mephi/index.html  → ../chatbotlite/index.html (シンボリックリンク)
-/mephi/soul/        → メフィ用soul
+**複数キャラ運用（GitHub Pages推奨）:**
 
-/sensei/index.html → ../chatbotlite/index.html (シンボリックリンク)
-/sensei/soul/       → 先生用soul
+キャラごとにリポジトリを作り、GitHub Pagesで公開するのが最もシンプルで安全です。
+
+```
+my-mephi/          ← リポジトリ → https://you.github.io/my-mephi/
+  index.html        ← ChatBot Lite本体をコピー
+  soul/config.json  ← メフィ用設定
+  soul/persona.txt  ← メフィ用ペルソナ
+
+my-sensei/          ← リポジトリ → https://you.github.io/my-sensei/
+  index.html        ← ChatBot Lite本体をコピー
+  soul/config.json  ← 先生用設定
+  soul/persona.txt  ← 先生用ペルソナ
 ```
 
-同じ index.html で soul/ だけ変えれば別キャラに。
+リポジトリごとにsoul/とindex.htmlの管理者が一致するため、信頼境界が明確になります。
 
 ### 例: 専門知識bot
 
@@ -135,7 +142,7 @@ System Promptにドキュメント全文を貼り付ければ、
 - **状態管理**: 散在する`let`変数をAppStateオブジェクトに集約
 - **localStorage定数化**: キー名(`cbl_*`)を定数で一元管理
 - **ストリーミング対応**: `generateContent` → `streamGenerateContent` で体感速度向上
-- **soul/ディレクトリの信頼モデル**: 信頼境界の明文化（CSSインジェクション対策）
+- **リクエストキャンセル**: AbortControllerによるfetch中断 + ストップボタンUI
 
 ## ライセンス
 
