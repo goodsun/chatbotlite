@@ -103,7 +103,7 @@ System Promptにドキュメント全文を貼り付ければ、
 ## セキュリティ
 
 - APIキーはブラウザからGemini APIに直接送信されます（サーバーを経由しません）
-- ⚠️ APIキーはURLクエリパラメータに含まれるため、ブラウザ履歴やDevToolsに残る可能性があります（Gemini APIの仕様上回避不可）
+- APIキーは `x-goog-api-key` ヘッダーで送信（URLに露出しません）
 - キーが漏洩した場合は [Google AI Studio](https://aistudio.google.com/apikey) で即座に再生成できます
 - bot応答は [DOMPurify](https://github.com/cure53/DOMPurify) でサニタイズ済み
 
