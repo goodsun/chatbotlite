@@ -8,6 +8,9 @@
 
 サーバー不要。インフラ代$0。HTMLファイルを開くだけで動く。
 
+🔥 **デモ**: https://goodsun.github.io/chatbotlite/
+😈 **メフィ（Devil's Advocate）**: https://teddy.bon-soleil.com/mephi/
+
 ## 特徴
 
 - 📄 **HTML1ファイル完結** — 依存はDOMPurify CDNのみ
