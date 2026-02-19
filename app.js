@@ -1,8 +1,14 @@
+// --- localStorage namespace (path-scoped to avoid collisions on same-origin hosts like github.io) ---
+const LS_PREFIX = 'cbl_' + location.pathname.replace(/\/index\.html$/, '/').replace(/([^/])$/, '$1/') + '_';
+function lsGet(key) { return localStorage.getItem(LS_PREFIX + key); }
+function lsSet(key, value) { localStorage.setItem(LS_PREFIX + key, value); }
+function lsRemove(key) { localStorage.removeItem(LS_PREFIX + key); }
+
 // --- State ---
 let chatHistory = [];
 let isLoading = false;
 let abortController = null;
-let memory = localStorage.getItem('cbl_memory') || '';
+let memory = lsGet('memory') || '';
 let turnsSinceLastSummary = 0;
 let soulConfig = {}; // Loaded from soul/config.json
 const SUMMARY_INTERVAL = 10; // Summarize every N turns
@@ -25,10 +31,10 @@ function obfuscateKey(key) { return btoa(key.split('').reverse().join('')); }
 function deobfuscateKey(stored) { try { return atob(stored).split('').reverse().join(''); } catch { return ''; } }
 
 // --- Init ---
-const isRemember = localStorage.getItem('cbl_remember') === '1';
+const isRemember = lsGet('remember') === '1';
 rememberCb.checked = isRemember;
 if (isRemember) {
-  apiKeyInput.value = deobfuscateKey(localStorage.getItem('cbl_api_key') || '');
+  apiKeyInput.value = deobfuscateKey(lsGet('api_key') || '');
 }
 
 // --- Soul loader ---
@@ -103,16 +109,14 @@ async function loadSoul() {
     }
   } catch(e) { soulErrors.push('knowledge.txt'); }
 
-  // style.css → inject
+  // style.css → load via <link> (CSP-compatible, no 'unsafe-inline' needed)
   try {
-    const res = await fetch('./soul/style.css');
+    const res = await fetch('./soul/style.css', { method: 'HEAD' });
     if (res.ok) {
-      const css = await res.text();
-      if (css.trim()) {
-        const style = document.createElement('style');
-        style.textContent = css;
-        document.head.appendChild(style);
-      }
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = './soul/style.css';
+      document.head.appendChild(link);
     }
   } catch(e) { soulErrors.push('style.css'); }
 
@@ -129,11 +133,10 @@ async function loadSoul() {
 // Load soul, then apply localStorage overrides
 await loadSoul();
 
-// Validate stored API key on startup
-if (apiKeyInput.value.trim()) validateApiKey();
+// No auto-validation on startup — only validate when user interacts with the key field
 
 // Restore chat history from previous session
-const savedHistory = localStorage.getItem('cbl_history');
+const savedHistory = lsGet('history');
 if (savedHistory) {
   try {
     const parsed = JSON.parse(savedHistory);
@@ -154,13 +157,13 @@ if (savedHistory) {
   } catch(e) {}
 }
 
-const savedPrompt = localStorage.getItem('cbl_system_prompt');
+const savedPrompt = lsGet('system_prompt');
 if (savedPrompt) systemPrompt.value = savedPrompt;
 
-const savedModel = localStorage.getItem('cbl_model');
+const savedModel = lsGet('model');
 if (savedModel) modelSelect.value = savedModel;
 
-const savedTitle = localStorage.getItem('cbl_title');
+const savedTitle = lsGet('title');
 if (savedTitle) {
   botTitle.value = savedTitle;
   document.querySelector('.header h1').textContent = '💬 ' + savedTitle;
@@ -209,16 +212,16 @@ rememberCb.addEventListener('change', async () => {
       rememberCb.checked = false;
       return;
     }
-    localStorage.setItem('cbl_remember', '1');
-    localStorage.setItem('cbl_api_key', obfuscateKey(apiKeyInput.value));
+    lsSet('remember', '1');
+    lsSet('api_key', obfuscateKey(apiKeyInput.value));
   } else {
-    localStorage.setItem('cbl_remember', '0');
-    localStorage.removeItem('cbl_api_key');
+    lsSet('remember', '0');
+    lsRemove('api_key');
   }
 });
 
 apiKeyInput.addEventListener('change', () => {
-  if (rememberCb.checked) localStorage.setItem('cbl_api_key', obfuscateKey(apiKeyInput.value));
+  if (rememberCb.checked) lsSet('api_key', obfuscateKey(apiKeyInput.value));
   validateApiKey();
 });
 
@@ -257,17 +260,17 @@ async function validateApiKey() {
 }
 
 systemPrompt.addEventListener('change', () => {
-  localStorage.setItem('cbl_system_prompt', systemPrompt.value);
+  lsSet('system_prompt', systemPrompt.value);
 });
 
 modelSelect.addEventListener('change', () => {
-  localStorage.setItem('cbl_model', modelSelect.value);
+  lsSet('model', modelSelect.value);
 });
 
 botTitle.addEventListener('change', () => {
   const t = botTitle.value.trim() || 'メフィ';
   const icon = soulConfig.icon || '💬';
-  localStorage.setItem('cbl_title', t);
+  lsSet('title', t);
   document.querySelector('.header h1').textContent = icon + ' ' + t;
   document.querySelector('.welcome h2').textContent = icon + ' ' + t;
   document.title = t;
@@ -284,16 +287,18 @@ configToggle.addEventListener('click', () => {
 document.getElementById('clearMemory').addEventListener('click', () => {
   if (!confirm('記憶をクリアしますか？')) return;
   memory = '';
-  localStorage.removeItem('cbl_memory');
+  lsRemove('memory');
   document.getElementById('memoryPreview').textContent = '💭 Memory: (empty)';
 });
 
 document.getElementById('clearHistory').addEventListener('click', () => {
   if (!confirm('会話履歴をクリアしますか？')) return;
   chatHistory = [];
-  localStorage.removeItem('cbl_history');
+  lsRemove('history');
   turnsSinceLastSummary = 0;
-  chatArea.innerHTML = '';
+  // Remove all messages but keep the welcome element
+  chatArea.querySelectorAll('.msg, .msg-row, .msg.system').forEach(el => el.remove());
+  chatArea.appendChild(welcome);
   welcome.style.display = '';
 });
 
@@ -310,34 +315,40 @@ userInput.addEventListener('input', () => {
 });
 
 // --- Markdown (lightweight) ---
-// --- Markdown (marked.js) ---
-const markedOpts = {
-  breaks: true,
-  gfm: true,
-  renderer: (() => {
-    const r = new marked.Renderer();
-    // Open links in new tab with security attrs
-    r.link = function({ href, title, text }) {
-      const u = (href || '').toLowerCase().replace(/[\s\u0000-\u001f]/g, '');
-      if (u.startsWith('javascript:') || u.startsWith('data:') || u.startsWith('vbscript:')) return text;
-      const t = title ? ` title="${title}"` : '';
-      return `<a href="${href}"${t} target="_blank" rel="noopener noreferrer">${text}</a>`;
-    };
-    return r;
-  })()
-};
-marked.setOptions(markedOpts);
+// --- Markdown (marked.js with fallback) ---
+if (typeof marked !== 'undefined') {
+  const markedOpts = {
+    breaks: true,
+    gfm: true,
+    renderer: (() => {
+      const r = new marked.Renderer();
+      r.link = function({ href, text }) {
+        const u = (href || '').toLowerCase().replace(/[\s\u0000-\u001f]/g, '');
+        if (u.startsWith('javascript:') || u.startsWith('data:') || u.startsWith('vbscript:')) return text;
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+      };
+      return r;
+    })()
+  };
+  marked.setOptions(markedOpts);
+}
 
 function renderMarkdown(text) {
-  return marked.parse(text);
+  if (typeof marked !== 'undefined') {
+    return marked.parse(text);
+  }
+  // Fallback: escape HTML and convert newlines to <br>
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
 }
 
 // --- Sanitizer (DOMPurify) ---
 function sanitize(html) {
   if (typeof DOMPurify !== 'undefined') {
     return DOMPurify.sanitize(html, {
-      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'code', 'pre', 'a', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr'],
-      ALLOWED_ATTR: ['href', 'target', 'rel'],
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'code', 'pre', 'a', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'span'],
+      ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
       ALLOW_DATA_ATTR: false,
     });
   }
@@ -388,7 +399,7 @@ async function summarizeIfNeeded(key) {
       const summary = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (summary) {
         memory = summary.trim();
-        try { localStorage.setItem('cbl_memory', memory); }
+        try { lsSet('memory', memory); }
         catch(e) {
           console.warn('localStorage quota exceeded, memory not saved');
           addMessage('bot', '⚠️ ブラウザの保存容量が上限に達し、記憶を保存できませんでした。「🗑 記憶クリア」または「🗑 履歴クリア」で空きを作ってください。');
@@ -520,7 +531,7 @@ async function sendMessage() {
     chatHistory.push({ role: 'model', parts: [{ text: reply }] });
     
     // Save history & trigger summary
-    try { localStorage.setItem('cbl_history', JSON.stringify(chatHistory.slice(-100))); }
+    try { lsSet('history', JSON.stringify(chatHistory.slice(-100))); }
     catch(e) {
       console.warn('localStorage quota exceeded, history not saved');
       addMessage('bot', '⚠️ ブラウザの保存容量が上限に達しました。「🗑 履歴クリア」で空きを作ることをお勧めします。');
