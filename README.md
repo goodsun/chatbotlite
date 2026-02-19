@@ -59,6 +59,14 @@ System Promptにドキュメント全文を貼り付ければ、
 - 基本的なXSSサニタイズ内蔵
 - localStorage でAPIキー・設定を保存（オプトイン）
 
+## セキュリティ
+
+- APIキーはブラウザからGemini APIに直接送信されます（サーバーを経由しません）
+- ⚠️ APIキーはURLクエリパラメータに含まれるため、ブラウザ履歴やDevToolsに残る可能性があります（Gemini APIの仕様上回避不可）
+- キーが漏洩した場合は [Google AI Studio](https://aistudio.google.com/apikey) で即座に再生成できます
+- localStorage保存はオプトイン（確認ダイアログ付き）
+- bot応答はXSSサニタイズ済み
+
 ## ライセンス
 
 MIT
