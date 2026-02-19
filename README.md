@@ -142,7 +142,6 @@ System Promptにドキュメント全文を貼り付ければ、
 - **状態管理**: 散在する`let`変数をAppStateオブジェクトに集約
 - **localStorage定数化**: キー名(`cbl_*`)を定数で一元管理
 - **ストリーミング対応**: `generateContent` → `streamGenerateContent` で体感速度向上
-- **リクエストキャンセル**: AbortControllerによるfetch中断 + ストップボタンUI
 
 ## ライセンス
 
