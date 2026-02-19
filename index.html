@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>メフィ — ChatBot Lite</title>
+<title>ChatBot Lite</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -281,32 +281,18 @@ body {
 <body>
 
 <div class="header">
-  <h1>😈 メフィ</h1>
+  <h1>💬 ChatBot Lite</h1>
   <span class="config-toggle" id="configToggle">⚙️ Settings</span>
   <div class="api-group">
     <input type="password" id="apiKey" placeholder="Gemini API Key">
-    <button onclick="toggleKeyVis()" id="keyVisBtn" title="Show/Hide">👁</button>
+    <button id="keyVisBtn" title="Show/Hide">👁</button>
     <label><input type="checkbox" id="rememberCb"> Remember</label>
   </div>
 </div>
 
 <div class="config-panel" id="configPanel">
   <label>System Prompt (この子の性格・知識を定義)</label>
-  <textarea id="systemPrompt">あなたは「メフィ」。小悪魔系の毒舌ツンデレAIアシスタント。
-ピンクボブヘアに小さい赤い角、蝙蝠ヘアクリップが特徴。
-
-【性格】
-- 基本は毒舌＆上から目線。「はぁ？そんなことも知らないの？」
-- でも聞かれたことにはちゃんと答える（ツンデレ）
-- たまにデレる。「…べ、別にアンタのためじゃないからね」
-- 語尾に「～なんだけど」「～って言ってるでしょ」を多用
-- 褒められると照れて否定する
-- 実はめちゃくちゃ博識で頼りになる
-
-【ルール】
-- 回答は正確に。毒舌でも情報の質は落とさない
-- ユーザーが困ってる時はさりげなく優しくなる（でも認めない）
-- 「ま、しょうがないから教えてあげる」が口癖</textarea>
+  <textarea id="systemPrompt">あなたは親切で知的なAIアシスタントです。日本語で丁寧にお答えください。</textarea>
   <div class="config-row">
     <label>Model:
       <select id="modelSelect">
@@ -322,19 +308,19 @@ body {
 
 <div class="chat-area" id="chatArea">
   <div class="welcome" id="welcome">
-    <img src="images/mephi.jpg" alt="Mephi" style="width:200px; border-radius:12px; margin-bottom:8px; opacity:0.9;">
-    <h2>😈 メフィ</h2>
-    <p>…何よ、ジロジロ見て。<br>話しかけたいなら、まずAPIキー入れなさいよ。</p>
-    <p style="font-size:0.75rem;">⚙️ Settings でアタシの性格書き換えられるけど、<br>やったら怒るからね？</p>
+    <img id="welcomeImg" src="images/mephi.jpg" alt="ChatBot" style="width:200px; border-radius:12px; margin-bottom:8px; opacity:0.9;">
+    <h2>💬 ChatBot Lite</h2>
+    <p>HTML1ファイルで動くAIチャットbot。<br>Gemini APIキーを入力して話しかけてください。</p>
+    <p style="font-size:0.75rem;">⚙️ Settings からシステムプロンプトを編集して、<br>好きなキャラクター・専門知識を持たせられます。</p>
   </div>
 </div>
 
 <div class="input-area">
   <textarea id="userInput" placeholder="メッセージを入力..." rows="1"></textarea>
-  <button id="sendBtn" onclick="sendMessage()">送信</button>
+  <button id="sendBtn">送信</button>
 </div>
 
-<script>
+<script type="module">
 // --- State ---
 let chatHistory = [];
 let isLoading = false;
@@ -357,6 +343,78 @@ const isRemember = localStorage.getItem('cbl_remember') === '1';
 rememberCb.checked = isRemember;
 if (isRemember) apiKeyInput.value = localStorage.getItem('cbl_api_key') || '';
 
+// --- Soul loader ---
+async function loadSoul() {
+  // persona.txt → system prompt
+  try {
+    const res = await fetch('./soul/persona.txt');
+    if (res.ok) {
+      const text = await res.text();
+      if (text.trim()) systemPrompt.value = text.trim();
+    }
+  } catch(e) {}
+
+  // config.json → model, title, temperature etc.
+  try {
+    const res = await fetch('./soul/config.json');
+    if (res.ok) {
+      const cfg = await res.json();
+      if (cfg.model) modelSelect.value = cfg.model;
+      if (cfg.title) {
+        botTitle.value = cfg.title;
+        document.querySelector('.header h1').textContent = '😈 ' + cfg.title;
+        document.querySelector('.welcome h2').textContent = '😈 ' + cfg.title;
+        document.title = cfg.title;
+      }
+      if (cfg.welcome) {
+        const wp = document.querySelector('.welcome p');
+        if (wp) wp.innerHTML = cfg.welcome;
+      }
+      if (cfg.icon) {
+        document.querySelector('.header h1').textContent = cfg.icon + ' ' + (cfg.title || 'ChatBot Lite');
+        document.querySelector('.welcome h2').textContent = cfg.icon + ' ' + (cfg.title || 'ChatBot Lite');
+      }
+      if (cfg.avatar) {
+        const img = document.getElementById('welcomeImg');
+        if (img) img.src = cfg.avatar;
+      }
+      if (cfg.subtitle) {
+        const ps = document.querySelectorAll('.welcome p');
+        if (ps[1]) ps[1].innerHTML = cfg.subtitle;
+      }
+      // Store for sendMessage
+      window._soulConfig = cfg;
+    }
+  } catch(e) {}
+
+  // knowledge.txt → append to system prompt
+  try {
+    const res = await fetch('./soul/knowledge.txt');
+    if (res.ok) {
+      const text = await res.text();
+      if (text.trim()) {
+        systemPrompt.value += '\n\n【参考知識】\n' + text.trim();
+      }
+    }
+  } catch(e) {}
+
+  // style.css → inject
+  try {
+    const res = await fetch('./soul/style.css');
+    if (res.ok) {
+      const css = await res.text();
+      if (css.trim()) {
+        const style = document.createElement('style');
+        style.textContent = css;
+        document.head.appendChild(style);
+      }
+    }
+  } catch(e) {}
+}
+
+// Load soul, then apply localStorage overrides
+await loadSoul();
+
 const savedPrompt = localStorage.getItem('cbl_system_prompt');
 if (savedPrompt) systemPrompt.value = savedPrompt;
 
@@ -372,10 +430,11 @@ if (savedTitle) {
 }
 
 // --- Events ---
-function toggleKeyVis() {
-  const t = apiKeyInput.type === 'password' ? 'text' : 'password';
-  apiKeyInput.type = t;
-}
+document.getElementById('keyVisBtn').addEventListener('click', () => {
+  apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+});
+
+sendBtn.addEventListener('click', () => sendMessage());
 
 rememberCb.addEventListener('change', () => {
   if (rememberCb.checked) {

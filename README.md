@@ -32,6 +32,41 @@
 - **Model**: Gemini モデルを選択
 - **Title**: チャットbot名を変更
 
+### Soul ディレクトリ（推奨）
+
+`soul/` ディレクトリにファイルを置くと、起動時に自動読み込みされます。
+
+```
+soul/
+  persona.txt     ← システムプロンプト（キャラ設定）
+  knowledge.txt   ← 追加知識（プロンプトに追記される）
+  config.json     ← タイトル、モデル、アイコン等
+  style.css       ← テーマカスタマイズ
+```
+
+**config.json の例:**
+```json
+{
+  "title": "メフィ",
+  "icon": "😈",
+  "model": "gemini-2.5-flash",
+  "avatar": "images/mephi.jpg",
+  "welcome": "…何よ、ジロジロ見て。",
+  "subtitle": "⚙️ Settings で性格変えられるけど、やったら怒るからね？"
+}
+```
+
+**複数キャラ運用:**
+```
+/mephi/index.html  → ../chatbotlite/index.html (シンボリックリンク)
+/mephi/soul/        → メフィ用soul
+
+/sensei/index.html → ../chatbotlite/index.html (シンボリックリンク)
+/sensei/soul/       → 先生用soul
+```
+
+同じ index.html で soul/ だけ変えれば別キャラに。
+
 ### 例: 専門知識bot
 
 ```

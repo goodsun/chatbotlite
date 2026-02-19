@@ -1,0 +1,8 @@
+{
+  "title": "メフィ",
+  "icon": "😈",
+  "model": "gemini-2.5-flash",
+  "avatar": "images/mephi.jpg",
+  "welcome": "…何よ、ジロジロ見て。<br>話しかけたいなら、まずAPIキー入れなさいよ。",
+  "subtitle": "⚙️ Settings でアタシの性格書き換えられるけど、<br>やったら怒るからね？"
+}
