@@ -421,7 +421,11 @@ function renderMarkdown(text) {
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
+      const u = url.toLowerCase().replace(/[\s\u0000-\u001f]/g, '');
+      if (u.startsWith('javascript:') || u.startsWith('data:') || u.startsWith('vbscript:')) return text;
+      return `<a href="${url}" target="_blank" rel="noopener">${text}</a>`;
+    });
   
   // Process line by line for blocks
   const lines = html.split('\n');
@@ -451,14 +455,26 @@ function renderMarkdown(text) {
   return result.join('\n');
 }
 
-// --- DOMPurify lite (basic sanitize) ---
+// --- Sanitizer ---
 function sanitize(html) {
   const div = document.createElement('div');
   div.innerHTML = html;
-  div.querySelectorAll('script,iframe,object,embed,form').forEach(el => el.remove());
+  const dangerous = 'script,iframe,object,embed,form,math,svg,base,meta,link,template';
+  div.querySelectorAll(dangerous).forEach(el => el.remove());
   div.querySelectorAll('*').forEach(el => {
     for (const attr of [...el.attributes]) {
-      if (attr.name.startsWith('on')) el.removeAttribute(attr.name);
+      const name = attr.name.toLowerCase();
+      const val = attr.value.toLowerCase().replace(/[\s\u0000-\u001f]/g, '');
+      // Remove event handlers
+      if (name.startsWith('on')) { el.removeAttribute(attr.name); continue; }
+      // Block dangerous URL schemes
+      if (['href', 'src', 'action', 'formaction', 'xlink:href'].includes(name)) {
+        if (val.startsWith('javascript:') || val.startsWith('data:') || val.startsWith('vbscript:')) {
+          el.removeAttribute(attr.name);
+        }
+      }
+      // Remove style (CSS injection vector)
+      if (name === 'style') el.removeAttribute(attr.name);
     }
   });
   return div.innerHTML;
@@ -510,6 +526,8 @@ async function sendMessage() {
   
   addMessage('user', text);
   chatHistory.push({ role: 'user', parts: [{ text }] });
+  // Keep last 50 turns to prevent memory/token explosion
+  if (chatHistory.length > 100) chatHistory = chatHistory.slice(-100);
   
   showTyping();
   
@@ -533,7 +551,11 @@ async function sendMessage() {
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
       const msg = err?.error?.message || `HTTP ${response.status}`;
-      addMessage('bot', `⚠️ エラー: ${msg}`);
+      // Use textContent for error messages (untrusted API response)
+      const errDiv = document.createElement('div');
+      errDiv.className = 'msg bot';
+      errDiv.textContent = `⚠️ エラー: ${msg}`;
+      chatArea.appendChild(errDiv);
       chatHistory.pop();
       return;
     }
