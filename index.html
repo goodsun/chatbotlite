@@ -303,7 +303,10 @@ body {
       </select>
     </label>
     <label>Title: <input type="text" id="botTitle" value="ChatBot Lite" style="width:150px;"></label>
+    <button id="clearMemory" style="padding:4px 10px; background:#dc2626; color:#fff; border:none; border-radius:6px; font-size:0.75rem; cursor:pointer;">🗑 記憶クリア</button>
+    <button id="clearHistory" style="padding:4px 10px; background:#6b7280; color:#fff; border:none; border-radius:6px; font-size:0.75rem; cursor:pointer;">🗑 履歴クリア</button>
   </div>
+  <div id="memoryPreview" style="margin-top:8px; font-size:0.7rem; color:#6a5a8a; max-height:60px; overflow-y:auto;"></div>
 </div>
 
 <div class="chat-area" id="chatArea">
@@ -324,6 +327,9 @@ body {
 // --- State ---
 let chatHistory = [];
 let isLoading = false;
+let memory = localStorage.getItem('cbl_memory') || '';
+let turnsSinceLastSummary = 0;
+const SUMMARY_INTERVAL = 10; // Summarize every N turns
 
 // --- DOM ---
 const apiKeyInput = document.getElementById('apiKey');
@@ -387,6 +393,15 @@ async function loadSoul() {
     }
   } catch(e) {}
 
+  // memory.txt → initial memory (seed)
+  try {
+    const res = await fetch('./soul/memory.txt');
+    if (res.ok) {
+      const text = await res.text();
+      if (text.trim() && !memory) memory = text.trim();
+    }
+  } catch(e) {}
+
   // knowledge.txt → append to system prompt
   try {
     const res = await fetch('./soul/knowledge.txt');
@@ -414,6 +429,28 @@ async function loadSoul() {
 
 // Load soul, then apply localStorage overrides
 await loadSoul();
+
+// Restore chat history from previous session
+const savedHistory = localStorage.getItem('cbl_history');
+if (savedHistory) {
+  try {
+    const parsed = JSON.parse(savedHistory);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      chatHistory = parsed;
+      // Render previous messages
+      welcome.style.display = 'none';
+      for (const msg of chatHistory) {
+        addMessage(msg.role === 'user' ? 'user' : 'bot', msg.parts[0].text);
+      }
+      // Show session restore notice
+      const notice = document.createElement('div');
+      notice.className = 'msg system';
+      notice.textContent = '— 前回の会話を復元しました —';
+      chatArea.appendChild(notice);
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+  } catch(e) {}
+}
 
 const savedPrompt = localStorage.getItem('cbl_system_prompt');
 if (savedPrompt) systemPrompt.value = savedPrompt;
@@ -471,6 +508,25 @@ botTitle.addEventListener('change', () => {
 
 configToggle.addEventListener('click', () => {
   configPanel.classList.toggle('active');
+  // Show memory preview
+  const mp = document.getElementById('memoryPreview');
+  mp.textContent = memory ? '💭 Memory: ' + memory : '💭 Memory: (empty)';
+});
+
+document.getElementById('clearMemory').addEventListener('click', () => {
+  if (!confirm('記憶をクリアしますか？')) return;
+  memory = '';
+  localStorage.removeItem('cbl_memory');
+  document.getElementById('memoryPreview').textContent = '💭 Memory: (empty)';
+});
+
+document.getElementById('clearHistory').addEventListener('click', () => {
+  if (!confirm('会話履歴をクリアしますか？')) return;
+  chatHistory = [];
+  localStorage.removeItem('cbl_history');
+  turnsSinceLastSummary = 0;
+  chatArea.innerHTML = '';
+  welcome.style.display = '';
 });
 
 userInput.addEventListener('keydown', (e) => {
@@ -553,6 +609,53 @@ function sanitize(html) {
   return div.innerHTML;
 }
 
+// --- Memory ---
+function getSystemPromptWithMemory() {
+  let prompt = systemPrompt.value;
+  if (memory) {
+    prompt += '\n\n【過去の会話の記憶】\n' + memory;
+  }
+  return prompt;
+}
+
+async function summarizeIfNeeded(key) {
+  turnsSinceLastSummary++;
+  if (turnsSinceLastSummary < SUMMARY_INTERVAL) return;
+  turnsSinceLastSummary = 0;
+  
+  // Build conversation text for summary
+  const recentTurns = chatHistory.slice(-20).map(m => 
+    `${m.role === 'user' ? 'User' : 'Bot'}: ${m.parts[0].text}`
+  ).join('\n');
+  
+  const prevMemory = memory ? `Previous memory:\n${memory}\n\n` : '';
+  
+  try {
+    const model = modelSelect.value;
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: 
+            `${prevMemory}Recent conversation:\n${recentTurns}\n\nSummarize the key facts, user preferences, and important context from this conversation into a concise memory note (max 500 chars). Write in the same language the user used. Only output the summary, nothing else.`
+          }]}],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 256 }
+        })
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const summary = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (summary) {
+        memory = summary.trim();
+        localStorage.setItem('cbl_memory', memory);
+      }
+    }
+  } catch(e) { /* silent fail */ }
+}
+
 // --- Chat ---
 function addMessage(role, content) {
   if (welcome) welcome.style.display = 'none';
@@ -613,7 +716,7 @@ async function sendMessage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt.value }] },
+          system_instruction: { parts: [{ text: getSystemPromptWithMemory() }] },
           contents: chatHistory,
           generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
         })
@@ -655,6 +758,10 @@ async function sendMessage() {
     
     addMessage('bot', reply);
     chatHistory.push({ role: 'model', parts: [{ text: reply }] });
+    
+    // Save history & trigger summary
+    localStorage.setItem('cbl_history', JSON.stringify(chatHistory.slice(-50)));
+    summarizeIfNeeded(key);
     
   } catch (e) {
     hideTyping();
