@@ -707,10 +707,20 @@ userInput.addEventListener('input', () => {
 // --- Markdown (lightweight) ---
 function renderMarkdown(text) {
   // Simple markdown: bold, italic, code, links, lists, blockquotes
-  let html = text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
+  // Step 1: Escape HTML
+  let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Step 2: Extract code blocks/inline code to placeholders (protect from further processing)
+  const codeBlocks = [];
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    codeBlocks.push(`<pre><code>${code}</code></pre>`);
+    return `\x00CB${codeBlocks.length - 1}\x00`;
+  });
+  html = html.replace(/`([^`]+)`/g, (_, code) => {
+    codeBlocks.push(`<code>${code}</code>`);
+    return `\x00CB${codeBlocks.length - 1}\x00`;
+  });
+  // Step 3: Process inline formatting (safe — code blocks are placeholders)
+  html = html
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
@@ -744,16 +754,23 @@ function renderMarkdown(text) {
   }
   if (listType) result.push(`</${listType}>`);
   
-  return result.join('\n');
+  // Step 5: Restore code blocks from placeholders
+  let output = result.join('\n');
+  output = output.replace(/\x00CB(\d+)\x00/g, (_, i) => codeBlocks[parseInt(i)]);
+  return output;
 }
 
 // --- Sanitizer (DOMPurify) ---
 function sanitize(html) {
-  return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'code', 'pre', 'a', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
-    ALLOWED_ATTR: ['href', 'target', 'rel'],
-    ALLOW_DATA_ATTR: false,
-  });
+  if (typeof DOMPurify !== 'undefined') {
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'code', 'pre', 'a', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr'],
+      ALLOWED_ATTR: ['href', 'target', 'rel'],
+      ALLOW_DATA_ATTR: false,
+    });
+  }
+  // Fallback: strip all HTML tags if DOMPurify failed to load
+  return html.replace(/<[^>]*>/g, '');
 }
 
 // --- Memory ---
@@ -840,7 +857,7 @@ function showTyping() {
   const div = document.createElement('div');
   div.className = 'typing';
   div.id = 'typing';
-  div.textContent = 'ちょっと待ちなさいよ';
+  div.textContent = soulConfig.typingMessage || '考え中…';
   chatArea.appendChild(div);
   chatArea.scrollTop = chatArea.scrollHeight;
 }
@@ -865,8 +882,12 @@ async function sendMessage() {
   
   addMessage('user', text);
   chatHistory.push({ role: 'user', parts: [{ text }] });
-  // Keep last 50 turns to prevent memory/token explosion
-  if (chatHistory.length > 50) chatHistory = chatHistory.slice(-50);
+  // Keep last 50 turns (100 entries) to prevent memory/token explosion
+  // Always slice to even number to keep user/model pairs intact
+  if (chatHistory.length > 100) {
+    chatHistory = chatHistory.slice(-100);
+    if (chatHistory[0]?.role === 'model') chatHistory.shift();
+  }
   
   showTyping();
   
@@ -918,7 +939,7 @@ async function sendMessage() {
     chatHistory.push({ role: 'model', parts: [{ text: reply }] });
     
     // Save history & trigger summary
-    localStorage.setItem('cbl_history', JSON.stringify(chatHistory.slice(-50)));
+    localStorage.setItem('cbl_history', JSON.stringify(chatHistory.slice(-100)));
     summarizeIfNeeded(key);
     
   } catch (e) {
