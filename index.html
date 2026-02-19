@@ -289,6 +289,71 @@ body {
 .btn-secondary { background: #6b7280; }
 .btn-secondary:hover { background: #4b5563; }
 
+/* Security modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal-box {
+  background: #1a1a2e;
+  border: 1px solid #3a2a5a;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.modal-box h3 {
+  color: #ffd700;
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+.modal-box ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+}
+.modal-box li {
+  color: #ccc;
+  font-size: 0.85rem;
+  padding: 6px 0;
+  border-bottom: 1px solid #2a1a3a;
+}
+.modal-box li::before {
+  content: '⚠️ ';
+}
+.modal-box li:last-child { border-bottom: none; }
+.modal-box li:last-child::before { content: '💡 '; }
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.modal-actions button {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.modal-cancel {
+  background: #333;
+  color: #aaa;
+}
+.modal-cancel:hover { background: #444; }
+.modal-confirm {
+  background: linear-gradient(135deg, #b366ff, #8a2be2);
+  color: #fff;
+}
+.modal-confirm:hover { opacity: 0.9; }
+
 @media (max-width: 600px) {
   .header { gap: 8px; }
   .header .api-group { width: 100%; margin-left: 0; }
@@ -340,6 +405,22 @@ body {
 <div class="input-area">
   <textarea id="userInput" placeholder="メッセージを入力..." rows="1"></textarea>
   <button id="sendBtn">送信</button>
+</div>
+
+<div class="modal-overlay" id="securityModal">
+  <div class="modal-box">
+    <h3>🔐 セキュリティに関する注意</h3>
+    <ul>
+      <li>APIキーはブラウザのlocalStorageに保存されます</li>
+      <li>ブラウザ拡張機能やXSS攻撃でアクセスされる可能性があります</li>
+      <li>機密性の高い用途ではRememberをOFFにしてください</li>
+      <li>キーは <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style="color:#b366ff;">Google AI Studio</a> でいつでも再生成できます</li>
+    </ul>
+    <div class="modal-actions">
+      <button class="modal-cancel" id="modalCancel">キャンセル</button>
+      <button class="modal-confirm" id="modalConfirm">保存する</button>
+    </div>
+  </div>
 </div>
 
 <script type="module">
@@ -497,9 +578,31 @@ document.getElementById('keyVisBtn').addEventListener('click', () => {
 
 sendBtn.addEventListener('click', () => sendMessage());
 
-rememberCb.addEventListener('change', () => {
+const securityModal = document.getElementById('securityModal');
+const modalConfirm = document.getElementById('modalConfirm');
+const modalCancel = document.getElementById('modalCancel');
+
+function showSecurityModal() {
+  return new Promise(resolve => {
+    securityModal.classList.add('active');
+    const onConfirm = () => { cleanup(); resolve(true); };
+    const onCancel = () => { cleanup(); resolve(false); };
+    const onOverlay = (e) => { if (e.target === securityModal) { cleanup(); resolve(false); } };
+    const cleanup = () => {
+      securityModal.classList.remove('active');
+      modalConfirm.removeEventListener('click', onConfirm);
+      modalCancel.removeEventListener('click', onCancel);
+      securityModal.removeEventListener('click', onOverlay);
+    };
+    modalConfirm.addEventListener('click', onConfirm);
+    modalCancel.addEventListener('click', onCancel);
+    securityModal.addEventListener('click', onOverlay);
+  });
+}
+
+rememberCb.addEventListener('change', async () => {
   if (rememberCb.checked) {
-    if (!confirm('⚠️ セキュリティに関する注意\n\n• APIキーはブラウザのlocalStorageに保存されます（拡張機能やXSSでアクセス可能）\n• 機密性の高い用途ではRememberをOFFにしてください\n• キーは Google AI Studio でいつでも再生成できます\n\n保存しますか？')) {
+    if (!await showSecurityModal()) {
       rememberCb.checked = false;
       return;
     }
