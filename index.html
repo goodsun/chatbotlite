@@ -565,12 +565,28 @@ async function sendMessage() {
     
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      const msg = err?.error?.message || `HTTP ${response.status}`;
-      // Use textContent for error messages (untrusted API response)
+      const errCode = err?.error?.code || response.status;
+      const errMsg = err?.error?.message || '';
+      let friendly;
+      if (errCode === 429 || errMsg.includes('quota') || errMsg.includes('rate')) {
+        const wait = errMsg.match(/retry in ([\d.]+)s/i);
+        friendly = wait
+          ? `⏳ API制限に達しました。${Math.ceil(parseFloat(wait[1]))}秒後にもう一度お試しください。`
+          : '⏳ API制限に達しました。しばらく待ってからお試しください。';
+      } else if (errCode === 400) {
+        friendly = '⚠️ リクエストエラー。APIキーが正しいか確認してください。';
+      } else if (errCode === 403) {
+        friendly = '🔑 APIキーが無効です。Google AI Studio で再発行してください。';
+      } else if (errCode === 404) {
+        friendly = '⚠️ 選択中のモデルが利用できません。Settingsから別のモデルをお試しください。';
+      } else {
+        friendly = `⚠️ エラーが発生しました (${errCode})。しばらく待ってからお試しください。`;
+      }
       const errDiv = document.createElement('div');
       errDiv.className = 'msg bot';
-      errDiv.textContent = `⚠️ エラー: ${msg}`;
+      errDiv.textContent = friendly;
       chatArea.appendChild(errDiv);
+      chatArea.scrollTop = chatArea.scrollHeight;
       chatHistory.pop();
       return;
     }
@@ -585,8 +601,9 @@ async function sendMessage() {
     hideTyping();
     const errDiv2 = document.createElement('div');
     errDiv2.className = 'msg bot';
-    errDiv2.textContent = `⚠️ 通信エラー: ${e.message}`;
+    errDiv2.textContent = '⚠️ 通信エラー。インターネット接続を確認してください。';
     chatArea.appendChild(errDiv2);
+    chatArea.scrollTop = chatArea.scrollHeight;
     chatHistory.pop();
   } finally {
     isLoading = false;
