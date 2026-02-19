@@ -270,6 +270,19 @@ body {
   margin-bottom: 0;
 }
 
+.btn-danger, .btn-secondary {
+  padding: 4px 10px;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.btn-danger { background: #dc2626; }
+.btn-danger:hover { background: #b91c1c; }
+.btn-secondary { background: #6b7280; }
+.btn-secondary:hover { background: #4b5563; }
+
 @media (max-width: 600px) {
   .header { gap: 8px; }
   .header .api-group { width: 100%; margin-left: 0; }
@@ -303,8 +316,8 @@ body {
       </select>
     </label>
     <label>Title: <input type="text" id="botTitle" value="ChatBot Lite" style="width:150px;"></label>
-    <button id="clearMemory" style="padding:4px 10px; background:#dc2626; color:#fff; border:none; border-radius:6px; font-size:0.75rem; cursor:pointer;">🗑 記憶クリア</button>
-    <button id="clearHistory" style="padding:4px 10px; background:#6b7280; color:#fff; border:none; border-radius:6px; font-size:0.75rem; cursor:pointer;">🗑 履歴クリア</button>
+    <button id="clearMemory" class="btn-danger">🗑 記憶クリア</button>
+    <button id="clearHistory" class="btn-secondary">🗑 履歴クリア</button>
   </div>
   <div id="memoryPreview" style="margin-top:8px; font-size:0.7rem; color:#6a5a8a; max-height:60px; overflow-y:auto;"></div>
 </div>
@@ -329,6 +342,7 @@ let chatHistory = [];
 let isLoading = false;
 let memory = localStorage.getItem('cbl_memory') || '';
 let turnsSinceLastSummary = 0;
+let soulConfig = {}; // Loaded from soul/config.json
 const SUMMARY_INTERVAL = 10; // Summarize every N turns
 
 // --- DOM ---
@@ -374,7 +388,7 @@ async function loadSoul() {
       }
       if (cfg.welcome) {
         const wp = document.querySelector('.welcome p');
-        if (wp) wp.innerHTML = cfg.welcome;
+        if (wp) wp.innerHTML = sanitize(cfg.welcome);
       }
       if (cfg.icon) {
         document.querySelector('.header h1').textContent = cfg.icon + ' ' + (cfg.title || 'ChatBot Lite');
@@ -386,10 +400,10 @@ async function loadSoul() {
       }
       if (cfg.subtitle) {
         const ps = document.querySelectorAll('.welcome p');
-        if (ps[1]) ps[1].innerHTML = cfg.subtitle;
+        if (ps[1]) ps[1].innerHTML = sanitize(cfg.subtitle);
       }
-      // Store for sendMessage
-      window._soulConfig = cfg;
+      // Store for sendMessage (scoped, not global)
+      soulConfig = cfg;
     }
   } catch(e) {}
 
@@ -501,8 +515,10 @@ modelSelect.addEventListener('change', () => {
 
 botTitle.addEventListener('change', () => {
   const t = botTitle.value.trim() || 'メフィ';
+  const icon = soulConfig.icon || '💬';
   localStorage.setItem('cbl_title', t);
-  document.querySelector('.header h1').textContent = '💬 ' + t;
+  document.querySelector('.header h1').textContent = icon + ' ' + t;
+  document.querySelector('.welcome h2').textContent = icon + ' ' + t;
   document.title = t;
 });
 
