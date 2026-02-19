@@ -453,6 +453,7 @@ body {
 // --- State ---
 let chatHistory = [];
 let isLoading = false;
+let abortController = null;
 let memory = localStorage.getItem('cbl_memory') || '';
 let turnsSinceLastSummary = 0;
 let soulConfig = {}; // Loaded from soul/config.json
@@ -608,7 +609,13 @@ document.getElementById('keyVisBtn').addEventListener('click', () => {
   apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
 });
 
-sendBtn.addEventListener('click', () => sendMessage());
+sendBtn.addEventListener('click', () => {
+  if (isLoading && abortController) {
+    abortController.abort();
+  } else {
+    sendMessage();
+  }
+});
 
 const securityModal = document.getElementById('securityModal');
 const modalConfirm = document.getElementById('modalConfirm');
@@ -880,7 +887,9 @@ async function sendMessage() {
   userInput.dispatchEvent(new Event('input'));
   userInput.style.height = 'auto';
   isLoading = true;
-  sendBtn.disabled = true;
+  abortController = new AbortController();
+  sendBtn.textContent = '⏹';
+  sendBtn.title = 'Stop';
   
   addMessage('user', text);
   chatHistory.push({ role: 'user', parts: [{ text }] });
@@ -904,7 +913,8 @@ async function sendMessage() {
           system_instruction: { parts: [{ text: getSystemPromptWithMemory() }] },
           contents: chatHistory,
           generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
-        })
+        }),
+        signal: abortController.signal
       }
     );
     
@@ -947,10 +957,17 @@ async function sendMessage() {
     
   } catch (e) {
     hideTyping();
-    addMessage('bot', '⚠️ 通信エラー。インターネット接続を確認してください。');
+    if (e.name === 'AbortError') {
+      addMessage('bot', '⏹ キャンセルしました');
+    } else {
+      addMessage('bot', '⚠️ 通信エラー。インターネット接続を確認してください。');
+    }
     chatHistory.pop();
   } finally {
     isLoading = false;
+    abortController = null;
+    sendBtn.textContent = '送信';
+    sendBtn.title = '';
     sendBtn.disabled = false;
     userInput.focus();
   }
