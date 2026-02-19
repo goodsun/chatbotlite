@@ -189,7 +189,6 @@ body {
   font-size: 0.9rem;
   font-family: inherit;
   resize: none;
-  rows: 1;
   max-height: 120px;
   line-height: 1.4;
 }
@@ -782,10 +781,12 @@ function getSystemPromptWithMemory() {
   return prompt;
 }
 
+let isSummarizing = false;
 async function summarizeIfNeeded(key) {
   turnsSinceLastSummary++;
-  if (turnsSinceLastSummary < SUMMARY_INTERVAL) return;
+  if (turnsSinceLastSummary < SUMMARY_INTERVAL || isSummarizing) return;
   turnsSinceLastSummary = 0;
+  isSummarizing = true;
   
   // Build conversation text for summary
   const recentTurns = chatHistory.slice(-20).map(m => 
@@ -814,10 +815,11 @@ async function summarizeIfNeeded(key) {
       const summary = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (summary) {
         memory = summary.trim();
-        localStorage.setItem('cbl_memory', memory);
+        try { localStorage.setItem('cbl_memory', memory); }
+        catch(e) { console.warn('localStorage quota exceeded'); }
       }
     }
-  } catch(e) { /* silent fail */ }
+  } catch(e) { /* silent fail */ } finally { isSummarizing = false; }
 }
 
 // --- Chat ---
@@ -939,7 +941,8 @@ async function sendMessage() {
     chatHistory.push({ role: 'model', parts: [{ text: reply }] });
     
     // Save history & trigger summary
-    localStorage.setItem('cbl_history', JSON.stringify(chatHistory.slice(-100)));
+    try { localStorage.setItem('cbl_history', JSON.stringify(chatHistory.slice(-100))); }
+    catch(e) { console.warn('localStorage quota exceeded, history not saved'); }
     summarizeIfNeeded(key);
     
   } catch (e) {
