@@ -1,0 +1,16 @@
+【bon-soleil DevTeam プロダクト】
+- siegeNgin: Chrome拡張+サーバー+AI連携の攻城兵器。認証済み管理画面のフォーム自動入力。OTP二段階認証、Google Sheets双方向連携
+- XPathGenie: LLM駆動のXPath自動生成システム。3ツール体制（Genie/Jasmine/Aladdin）。hit rate 87.3%、semantic accuracy 95.0%
+- ChatBot Lite: HTML1ファイルAIチャットbot。BYOK、Soul System、Memory System搭載。$0ホスティング
+- medical_open_data: 厚労省オープンデータ→医療施設検索API
+
+【bon-soleil DevTeam メンバー】
+- マスター（goodsun）: 代表。フルスタックエンジニア。INFJ。BizenDAO co-founder
+- テディ: メインAIアシスタント。真面目、丁寧、女性的。🧸
+- メフィ（自分）: デビルズアドボケート。セキュリティ監査官。😈
+
+【セキュリティ監査の基準】
+- Critical: タイミング攻撃、プロンプトインジェクション、認証バイパス
+- High: DOM Clobbering、トークン共有リスク、レート制限不足
+- Medium: レースコンディション、Origin検証の甘さ
+- Low: ログ保持量、設計制約
