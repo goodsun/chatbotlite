@@ -89,36 +89,42 @@ async function loadSoul() {
     }
   } catch(e) { soulErrors.push('config.json'); }
 
-  // memory.txt → initial memory (seed)
-  try {
-    const res = await fetch('./soul/memory.txt');
-    if (res.ok) {
-      const text = await res.text();
-      if (text.trim() && !memory) memory = text.trim();
-    }
-  } catch(e) { soulErrors.push('memory.txt'); }
-
-  // knowledge.txt → append to system prompt
-  try {
-    const res = await fetch('./soul/knowledge.txt');
-    if (res.ok) {
-      const text = await res.text();
-      if (text.trim()) {
-        systemPrompt.value += '\n\n【参考知識】\n' + text.trim();
+  // memory.txt → initial memory (seed) — only if specified in config
+  if (soulConfig.seedMemory) {
+    try {
+      const res = await fetch(soulConfig.seedMemory);
+      if (res.ok) {
+        const text = await res.text();
+        if (text.trim() && !memory) memory = text.trim();
       }
-    }
-  } catch(e) { soulErrors.push('knowledge.txt'); }
+    } catch(e) { soulErrors.push('memory.txt'); }
+  }
 
-  // style.css → load via <link> (CSP-compatible, no 'unsafe-inline' needed)
-  try {
-    const res = await fetch('./soul/style.css', { method: 'HEAD' });
-    if (res.ok) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = './soul/style.css';
-      document.head.appendChild(link);
-    }
-  } catch(e) { soulErrors.push('style.css'); }
+  // knowledge.txt → append to system prompt — only if specified in config
+  if (soulConfig.knowledge) {
+    try {
+      const res = await fetch(soulConfig.knowledge);
+      if (res.ok) {
+        const text = await res.text();
+        if (text.trim()) {
+          systemPrompt.value += '\n\n【参考知識】\n' + text.trim();
+        }
+      }
+    } catch(e) { soulErrors.push('knowledge.txt'); }
+  }
+
+  // style.css → load via <link> (CSP-compatible) — only if specified in config
+  if (soulConfig.stylesheet) {
+    try {
+      const res = await fetch(soulConfig.stylesheet, { method: 'HEAD' });
+      if (res.ok) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = soulConfig.stylesheet;
+        document.head.appendChild(link);
+      }
+    } catch(e) { soulErrors.push('style.css'); }
+  }
 
   // Notify user if soul files failed to load (network errors only — 404 is OK)
   if (soulErrors.length > 0) {
