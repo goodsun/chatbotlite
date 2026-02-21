@@ -371,6 +371,73 @@ function getSystemPromptWithMemory() {
   return prompt;
 }
 
+// --- TTS (Google Cloud Text-to-Speech) ---
+let ttsAudio = null;
+const TTS_VOICE = 'ja-JP-Wavenet-B';
+const TTS_LANG = 'ja-JP';
+
+async function speakText(text, button) {
+  // Stop if already playing
+  if (ttsAudio && !ttsAudio.paused) {
+    ttsAudio.pause();
+    ttsAudio.currentTime = 0;
+    document.querySelectorAll('.tts-btn.playing').forEach(b => b.classList.remove('playing'));
+    return;
+  }
+
+  const key = apiKeyInput.value.trim();
+  if (!key) { alert('APIキーを入力してください'); return; }
+
+  // Strip markdown/HTML for cleaner speech
+  const clean = text.replace(/[#*_`~\[\]()>|]/g, '').replace(/<[^>]*>/g, '').replace(/\n+/g, '。').trim();
+  if (!clean) return;
+
+  // Truncate to 5000 chars (API limit)
+  const truncated = clean.slice(0, 5000);
+
+  button.classList.add('loading');
+  try {
+    const res = await fetch(
+      `https://texttospeech.googleapis.com/v1/text:synthesize?key=${key}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: { text: truncated },
+          voice: { languageCode: TTS_LANG, name: TTS_VOICE },
+          audioConfig: { audioEncoding: 'MP3', speakingRate: 1.0, pitch: 0 }
+        })
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error('TTS error:', err);
+      button.classList.remove('loading');
+      return;
+    }
+
+    const data = await res.json();
+    const audioBytes = atob(data.audioContent);
+    const audioArray = new Uint8Array(audioBytes.length);
+    for (let i = 0; i < audioBytes.length; i++) audioArray[i] = audioBytes.charCodeAt(i);
+    const blob = new Blob([audioArray], { type: 'audio/mp3' });
+    const url = URL.createObjectURL(blob);
+
+    ttsAudio = new Audio(url);
+    button.classList.remove('loading');
+    button.classList.add('playing');
+    ttsAudio.play();
+    ttsAudio.onended = () => {
+      button.classList.remove('playing');
+      URL.revokeObjectURL(url);
+    };
+  } catch(e) {
+    console.error('TTS fetch error:', e);
+    button.classList.remove('loading');
+  }
+}
+
 let isSummarizing = false;
 async function summarizeIfNeeded(key) {
   turnsSinceLastSummary++;
@@ -427,6 +494,13 @@ function addMessage(role, content) {
     chatArea.appendChild(div);
   } else {
     div.innerHTML = sanitize(renderMarkdown(content));
+    // Add TTS button
+    const ttsBtn = document.createElement('button');
+    ttsBtn.className = 'tts-btn';
+    ttsBtn.title = '🔊 読み上げ';
+    ttsBtn.textContent = '🔊';
+    ttsBtn.addEventListener('click', () => speakText(content, ttsBtn));
+    div.appendChild(ttsBtn);
     // Wrap bot message with icon if configured
     const iconSrc = soulConfig.botIcon;
     if (iconSrc) {
