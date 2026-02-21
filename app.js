@@ -148,11 +148,14 @@ if (savedHistory) {
     const parsed = JSON.parse(savedHistory);
     if (Array.isArray(parsed) && parsed.length > 0) {
       chatHistory = parsed;
-      // Render previous messages
+      // Render previous messages (mark as restored to skip auto-TTS)
       welcome.style.display = 'none';
+      const prevAutoTts = ttsAutoCb.checked;
+      ttsAutoCb.checked = false;
       for (const msg of chatHistory) {
         addMessage(msg.role === 'user' ? 'user' : 'bot', msg.parts[0].text);
       }
+      ttsAutoCb.checked = prevAutoTts;
       // Show session restore notice
       const notice = document.createElement('div');
       notice.className = 'msg system';
@@ -375,6 +378,10 @@ function getSystemPromptWithMemory() {
 let ttsAudio = null;
 const TTS_VOICE = 'ja-JP-Wavenet-B';
 const TTS_LANG = 'ja-JP';
+const ttsAutoCb = document.getElementById('ttsAutoCb');
+// Restore auto-TTS preference
+ttsAutoCb.checked = lsGet('tts_auto') === '1';
+ttsAutoCb.addEventListener('change', () => lsSet('tts_auto', ttsAutoCb.checked ? '1' : '0'));
 
 async function speakText(text, button) {
   // Stop if already playing
@@ -509,6 +516,10 @@ function addMessage(role, content) {
     ttsBtn.textContent = '🔊';
     ttsBtn.addEventListener('click', () => speakText(content, ttsBtn));
     div.appendChild(ttsBtn);
+    // Auto-speak if enabled (only for new messages, not history restore)
+    if (ttsAutoCb.checked && !div.dataset.restored) {
+      setTimeout(() => speakText(content, ttsBtn), 100);
+    }
     // Wrap bot message with icon if configured
     const iconSrc = soulConfig.botIcon;
     if (iconSrc) {
