@@ -382,6 +382,7 @@ async function speakText(text, button) {
     ttsAudio.pause();
     ttsAudio.currentTime = 0;
     document.querySelectorAll('.tts-btn.playing').forEach(b => b.classList.remove('playing'));
+    if (window.speechSynthesis) speechSynthesis.cancel();
     return;
   }
 
@@ -392,10 +393,11 @@ async function speakText(text, button) {
   const clean = text.replace(/[#*_`~\[\]()>|]/g, '').replace(/<[^>]*>/g, '').replace(/\n+/g, '。').trim();
   if (!clean) return;
 
-  // Truncate to 5000 chars (API limit)
   const truncated = clean.slice(0, 5000);
-
   button.classList.add('loading');
+
+  // Try Cloud TTS first, fallback to Web Speech API
+  let cloudOk = false;
   try {
     const res = await fetch(
       `https://texttospeech.googleapis.com/v1/text:synthesize?key=${key}`,
@@ -410,31 +412,37 @@ async function speakText(text, button) {
       }
     );
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      console.error('TTS error:', err);
+    if (res.ok) {
+      const data = await res.json();
+      const audioBytes = atob(data.audioContent);
+      const audioArray = new Uint8Array(audioBytes.length);
+      for (let i = 0; i < audioBytes.length; i++) audioArray[i] = audioBytes.charCodeAt(i);
+      const blob = new Blob([audioArray], { type: 'audio/mp3' });
+      const url = URL.createObjectURL(blob);
+      ttsAudio = new Audio(url);
       button.classList.remove('loading');
-      return;
+      button.classList.add('playing');
+      ttsAudio.play();
+      ttsAudio.onended = () => { button.classList.remove('playing'); URL.revokeObjectURL(url); };
+      cloudOk = true;
     }
+  } catch(e) { console.warn('Cloud TTS failed, falling back to Web Speech API:', e); }
 
-    const data = await res.json();
-    const audioBytes = atob(data.audioContent);
-    const audioArray = new Uint8Array(audioBytes.length);
-    for (let i = 0; i < audioBytes.length; i++) audioArray[i] = audioBytes.charCodeAt(i);
-    const blob = new Blob([audioArray], { type: 'audio/mp3' });
-    const url = URL.createObjectURL(blob);
-
-    ttsAudio = new Audio(url);
+  // Fallback: Web Speech API
+  if (!cloudOk) {
     button.classList.remove('loading');
+    if (!window.speechSynthesis) return;
+    const utter = new SpeechSynthesisUtterance(truncated);
+    utter.lang = TTS_LANG;
+    utter.rate = 1.0;
+    // Try to find a Japanese voice
+    const voices = speechSynthesis.getVoices();
+    const jaVoice = voices.find(v => v.lang.startsWith('ja'));
+    if (jaVoice) utter.voice = jaVoice;
     button.classList.add('playing');
-    ttsAudio.play();
-    ttsAudio.onended = () => {
-      button.classList.remove('playing');
-      URL.revokeObjectURL(url);
-    };
-  } catch(e) {
-    console.error('TTS fetch error:', e);
-    button.classList.remove('loading');
+    utter.onend = () => button.classList.remove('playing');
+    utter.onerror = () => button.classList.remove('playing');
+    speechSynthesis.speak(utter);
   }
 }
 
