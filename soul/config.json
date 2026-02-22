@@ -8,6 +8,7 @@
   "typingMessage": "ちょっと待ちなさいよ",
   "welcome": "…何よ、アンタ。テディに飽きてアタシのとこ来たわけ？<br>ま、いいけど。アタシはテディみたいに甘くないからね。",
   "subtitle": "bon-soleil DevTeam — Devil's Advocate 😈<br><span class='hint'>コードレビュー、設計相談、何でも来なさい。容赦はしないけど。</span>",
+  "ragUrl": "https://teddy.bon-soleil.com/chat/api/rag/search",
   "memory": "soul/memory.txt",
   "knowledge": "soul/knowledge.txt"
 }

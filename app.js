@@ -25,6 +25,7 @@ const configPanel = document.getElementById('configPanel');
 const systemPrompt = document.getElementById('systemPrompt');
 const modelSelect = document.getElementById('modelSelect');
 const botTitle = document.getElementById('botTitle');
+const ragUrlInput = document.getElementById('ragUrl');
 
 // --- Key obfuscation (not encryption — just hides from casual DevTools inspection) ---
 function obfuscateKey(key) { return btoa(key.split('').reverse().join('')); }
@@ -165,6 +166,14 @@ if (savedHistory) {
     }
   } catch(e) {}
 }
+
+// Restore RAG URL
+const savedRagUrl = lsGet('rag_url');
+if (savedRagUrl) ragUrlInput.value = savedRagUrl;
+// soul config can set ragUrl default
+if (soulConfig.ragUrl && !ragUrlInput.value) ragUrlInput.value = soulConfig.ragUrl;
+
+ragUrlInput.addEventListener('change', () => lsSet('rag_url', ragUrlInput.value));
 
 const savedPrompt = lsGet('system_prompt');
 if (savedPrompt) systemPrompt.value = savedPrompt;
@@ -555,6 +564,20 @@ function hideTyping() {
   if (el) el.remove();
 }
 
+// --- RAG Search ---
+async function ragSearch(query) {
+  const url = ragUrlInput.value.trim();
+  if (!url) return '';
+  try {
+    const res = await fetch(`${url}?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return '';
+    const data = await res.json();
+    const results = data.results || [];
+    if (results.length === 0) return '';
+    return '\n\n【参考情報（RAG検索結果）】\n' + results.map((r, i) => `[${i+1}] ${r}`).join('\n\n');
+  } catch(e) { console.warn('RAG search failed:', e); return ''; }
+}
+
 async function sendMessage() {
   const key = apiKeyInput.value.trim();
   if (!key) { alert('はぁ？APIキーも入れないで話しかけてくんの？'); return; }
@@ -582,14 +605,18 @@ async function sendMessage() {
   showTyping();
   
   try {
+    // RAG search (parallel-safe, non-blocking on failure)
+    const ragContext = await ragSearch(text);
+    
     const model = modelSelect.value;
+    const sysText = getSystemPromptWithMemory() + ragContext;
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: getSystemPromptWithMemory() }] },
+          system_instruction: { parts: [{ text: sysText }] },
           contents: chatHistory,
           generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
         }),
