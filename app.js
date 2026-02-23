@@ -355,9 +355,10 @@ function renderMarkdown(text) {
   if (typeof marked !== 'undefined') {
     return marked.parse(text);
   }
-  // Fallback: escape HTML and convert newlines to <br>
+  // Fallback: escape HTML, bold, and convert newlines to <br>
   return text
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br>');
 }
 
