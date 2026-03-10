@@ -11,6 +11,7 @@ let abortController = null;
 let memory = lsGet('memory') || '';
 let turnsSinceLastSummary = 0;
 let soulConfig = {}; // Loaded from soul/config.json
+const SOUL_DIR = document.currentScript?.dataset?.soul || './soul';
 const SUMMARY_INTERVAL = 10; // Summarize every N turns
 
 // --- DOM ---
@@ -45,7 +46,7 @@ async function loadSoul() {
 
   // persona.txt → system prompt
   try {
-    const res = await fetch('./soul/persona.txt');
+    const res = await fetch(`${SOUL_DIR}/persona.txt`);
     if (res.ok) {
       const text = await res.text();
       if (text.trim()) systemPrompt.value = text.trim();
@@ -54,7 +55,7 @@ async function loadSoul() {
 
   // config.json → model, title, temperature, etc.
   try {
-    const res = await fetch('./soul/config.json');
+    const res = await fetch(`${SOUL_DIR}/config.json`);
     if (res.ok) {
       const cfg = await res.json();
       if (cfg.model) modelSelect.value = cfg.model;
@@ -410,7 +411,7 @@ async function speakText(text, button) {
   }
 
   const key = apiKeyInput.value.trim();
-  if (!key) { alert('APIキーを入力してください'); return; }
+  if (!key) { alert('APIキーを入力してください（右上の ☰ → Settings）'); return; }
 
   // Strip markdown/HTML for cleaner speech
   const clean = text.replace(/[#*_`~\[\]()>|]/g, '').replace(/<[^>]*>/g, '').replace(/\n+/g, '。').trim();
@@ -587,7 +588,7 @@ async function ragSearch(query) {
 
 async function sendMessage() {
   const key = apiKeyInput.value.trim();
-  if (!key) { alert('はぁ？APIキーも入れないで話しかけてくんの？'); return; }
+  if (!key) { alert('APIキーを入力してください（右上の ☰ → Settings）'); return; }
   
   const text = userInput.value.trim();
   if (!text || isLoading) return;

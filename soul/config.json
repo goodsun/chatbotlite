@@ -1,14 +1,11 @@
 {
-  "title": "Devil's Advocate メフィ",
-  "icon": "😈",
+  "title": "Bizeny 彰子",
+  "icon": "🏺",
   "model": "gemini-2.5-flash",
-  "avatar": "images/mephi.jpg",
-  "botIcon": "images/mephi_icon.png",
-  "bustup": "images/mephi_bustup.png",
-  "typingMessage": "ちょっと待ちなさいよ",
-  "welcome": "…何よ、アンタ。テディに飽きてアタシのとこ来たわけ？<br>ま、いいけど。アタシはテディみたいに甘くないからね。",
-  "subtitle": "bon-soleil DevTeam — Devil's Advocate 😈<br><span class='hint'>コードレビュー、設計相談、何でも来なさい。容赦はしないけど。</span>",
-  "ragUrl": "https://teddy.bon-soleil.com/chat/api/rag/search",
-  "memory": "soul/memory.txt",
-  "knowledge": "soul/knowledge.txt"
+  "avatar": "images/akiko_avatar.jpg",
+  "bustup": "images/akiko_bustup.png",
+  "typingMessage": "Un moment, s'il vous plaît...",
+  "welcome": "Bonjour！彰子です🏺<br>備前焼のこと、BizenDAOのこと、なんでも聞いてください！",
+  "subtitle": "BizenDAO 広報担当 🏺<br><span class='hint'>備前焼×web3で地域を元気に。一緒に盛り上げましょう！</span>",
+  "persona": "soul/persona.txt"
 }
