@@ -3,44 +3,62 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; connect-src 'self' https://generativelanguage.googleapis.com https://texttospeech.googleapis.com https://cdn.jsdelivr.net https:; media-src blob:; img-src 'self' data: https:; font-src 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' https://generativelanguage.googleapis.com https://texttospeech.googleapis.com https://cdn.jsdelivr.net https:; media-src blob:; img-src 'self' data: https:; font-src 'self' https://cdnjs.cloudflare.com;">
 <title>ChatBot Lite</title>
-<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js" integrity="sha384-80VlBZnyAwkkqtSfg5NhPyZff6nU4K/qniLBL8Jnm4KDv6jZhLiYtJbhglg/i9ww" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js" integrity="sha384-8hAfZQ5Oqos5HLTHfR0sLvvwpcVI4fGhV+0Dj/HCcpkKaacivQs82XHmvLOnAhXn" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js" integrity="sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+" crossorigin="anonymous"></script>
+<link rel="icon" href="images/mephi_icon.png" type="image/png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="header">
-  <h1>💬 ChatBot Lite</h1>
-  <button class="config-toggle" id="configToggle" aria-expanded="false" aria-controls="configPanel">⚙️ Settings</button>
-  <form class="api-group" id="apiForm" action="javascript:void(0)">
-    <input type="password" id="apiKey" name="apiKey" placeholder="Gemini API Key" autocomplete="off">
-    <button type="button" id="keyVisBtn" title="Show/Hide" aria-label="APIキーを表示/非表示">👁</button>
-    <label><input type="checkbox" id="rememberCb"> Remember</label>
-  </form>
+  <h1 id="headerTitle">💬 ChatBot Lite</h1>
+  <button class="hamburger-btn" id="hamburgerBtn" aria-label="設定">☰</button>
 </div>
 
-<div class="config-panel" id="configPanel">
-  <label>System Prompt (この子の性格・知識を定義)</label>
-  <textarea id="systemPrompt">あなたは親切で知的なAIアシスタントです。日本語で丁寧にお答えください。</textarea>
-  <div class="config-row">
-    <label>Model:
+<!-- 設定モーダル -->
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-modal">
+    <div class="settings-header">
+      <span>⚙️ Settings</span>
+      <button id="settingsClose">✕</button>
+    </div>
+    <div class="settings-body">
+      <form id="apiForm" action="javascript:void(0)">
+        <label class="settings-label">Gemini API Key</label>
+        <div class="api-key-row">
+          <input type="password" id="apiKey" name="apiKey" placeholder="Gemini API Key" autocomplete="new-password">
+          <button type="button" id="keyVisBtn" title="Show/Hide" aria-label="APIキーを表示/非表示">👁</button>
+        </div>
+        <label class="settings-label"><input type="checkbox" id="rememberCb"> Remember key</label>
+      </form>
+      <label class="settings-label">Model</label>
       <select id="modelSelect">
         <option value="gemini-2.5-flash">gemini-2.5-flash</option>
         <option value="gemini-2.0-flash">gemini-2.0-flash</option>
         <option value="gemini-1.5-flash">gemini-1.5-flash</option>
         <option value="gemini-1.5-pro">gemini-1.5-pro</option>
       </select>
-    </label>
-    <label>Title: <input type="text" id="botTitle" value="ChatBot Lite"></label>
-    <label>RAG API: <input type="url" id="ragUrl" placeholder="https://example.com/chat/api/rag/search"></label>
-    <label class="tts-auto-label"><input type="checkbox" id="ttsAutoCb"> 🔊 自動読み上げ</label>
-    <button id="clearMemory" class="btn-danger">🗑 記憶クリア</button>
-    <button id="clearHistory" class="btn-secondary">🗑 履歴クリア</button>
+      <label class="settings-label">Bot Title</label>
+      <input type="text" id="botTitle" value="ChatBot Lite">
+      <label class="settings-label">RAG API</label>
+      <input type="url" id="ragUrl" placeholder="https://example.com/chat/api/rag/search">
+      <label class="settings-label">System Prompt</label>
+      <textarea id="systemPrompt">あなたは親切で知的なAIアシスタントです。日本語で丁寧にお答えください。</textarea>
+      <label class="settings-label tts-auto-label"><input type="checkbox" id="ttsAutoCb"> 🔊 自動読み上げ</label>
+      <div class="settings-actions">
+        <button id="clearMemory" class="btn-danger">🗑 記憶クリア</button>
+        <button id="clearHistory" class="btn-secondary">🗑 履歴クリア</button>
+      </div>
+      <div id="memoryPreview"></div>
+    </div>
   </div>
-  <div id="memoryPreview"></div>
 </div>
+
+<!-- 旧config-panel（非表示・JS互換のため残す） -->
+<div id="configPanel" class="hidden"></div>
 
 <div class="chat-area" id="chatArea" role="log" aria-live="polite">
   <div class="welcome" id="welcome">
@@ -51,10 +69,18 @@
   </div>
 </div>
 
+<!-- 音声テキストオーバーレイ -->
+<div id="inputPreviewOverlay" class="input-preview-overlay">
+  <div id="inputPreview" class="input-preview"></div>
+  <button id="clearBtn" class="clear-btn" title="クリア"><i class="fa-solid fa-xmark"></i></button>
+</div>
+
 <div class="input-area">
-  <button id="micBtn" class="mic-btn" title="音声入力">🎤</button>
-  <textarea id="userInput" placeholder="メッセージを入力..." rows="1"></textarea>
-  <button id="sendBtn">送信</button>
+  <div class="input-bar">
+    <button id="micBtn" class="mic-btn" title="音声入力"><i class="fa-solid fa-microphone"></i></button>
+    <button id="sendBtn" class="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+  </div>
+  <textarea id="userInput" class="hidden"></textarea>
 </div>
 
 <div class="modal-overlay" id="securityModal">

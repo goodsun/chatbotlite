@@ -20,8 +20,9 @@ const chatArea = document.getElementById('chatArea');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 const welcome = document.getElementById('welcome');
-const configToggle = document.getElementById('configToggle');
-const configPanel = document.getElementById('configPanel');
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const settingsOverlay = document.getElementById('settingsOverlay');
+const settingsClose = document.getElementById('settingsClose');
 const systemPrompt = document.getElementById('systemPrompt');
 const modelSelect = document.getElementById('modelSelect');
 const botTitle = document.getElementById('botTitle');
@@ -294,10 +295,15 @@ botTitle.addEventListener('change', () => {
   document.title = t;
 });
 
-configToggle.addEventListener('click', () => {
-  configPanel.classList.toggle('active');
-  configToggle.setAttribute('aria-expanded', configPanel.classList.contains('active'));
-  // Show memory preview
+// ハンバーガーメニュー
+hamburgerBtn.addEventListener('click', () => settingsOverlay.classList.add('open'));
+settingsClose.addEventListener('click', () => settingsOverlay.classList.remove('open'));
+settingsOverlay.addEventListener('click', (e) => {
+  if (e.target === settingsOverlay) settingsOverlay.classList.remove('open');
+});
+
+// 設定パネルを開くたびにmemoryPreviewを更新
+hamburgerBtn.addEventListener('click', () => {
   const mp = document.getElementById('memoryPreview');
   mp.textContent = memory ? '💭 Memory: ' + memory : '💭 Memory: (empty)';
 });
@@ -685,13 +691,32 @@ async function sendMessage() {
 
 // ===== 音声入力（スマホ向け） =====
 const micBtn = document.getElementById('micBtn');
-const userInput = document.getElementById('userInput');
+const inputPreview = document.getElementById('inputPreview');
+const clearBtn = document.getElementById('clearBtn');
+const inputPreviewOverlay = document.getElementById('inputPreviewOverlay');
+
+function updatePreview(text, isInterim = false) {
+  userInput.value = text;
+  if (!text) {
+    inputPreview.textContent = '';
+    inputPreview.className = 'input-preview';
+    inputPreviewOverlay.classList.remove('visible');
+  } else if (isInterim) {
+    inputPreview.textContent = text;
+    inputPreview.className = 'input-preview interim';
+    inputPreviewOverlay.classList.add('visible');
+  } else {
+    inputPreview.textContent = text;
+    inputPreview.className = 'input-preview';
+    inputPreviewOverlay.classList.add('visible');
+  }
+}
 
 if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const recognition = new SpeechRecognition();
   recognition.lang = 'ja-JP';
-  recognition.continuous = false;
+  recognition.continuous = true;
   recognition.interimResults = true;
 
   let listening = false;
@@ -721,7 +746,7 @@ if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
       if (e.results[i].isFinal) finals += e.results[i][0].transcript;
       else interim += e.results[i][0].transcript;
     }
-    userInput.value = finals + interim;
+    updatePreview(finals + interim, !!interim);
   };
 
   recognition.onend = () => {
@@ -729,15 +754,7 @@ if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
     micBtn.classList.remove('listening');
     micBtn.textContent = '🎤';
     savedText = userInput.value;
-    // 認識結果があれば自動送信
-    if (savedText.trim()) {
-      // textareaを一瞬見せてから送信
-      userInput.classList.add('expanded');
-      setTimeout(() => {
-        sendBtn.click();
-        userInput.classList.remove('expanded');
-      }, 500);
-    }
+    updatePreview(savedText, false);
   };
 
   recognition.onerror = (e) => {
@@ -746,9 +763,14 @@ if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
     micBtn.textContent = '🎤';
   };
 
-  // textareaタップで展開（スマホ）
-  userInput.addEventListener('focus', () => {
-    userInput.classList.add('expanded');
+  // クリアボタン
+  clearBtn.addEventListener('click', () => {
+    savedText = '';
+    updatePreview('');
+    if (listening) {
+      recognition.stop();
+      setTimeout(() => recognition.start(), 300);
+    }
   });
 
 } else {

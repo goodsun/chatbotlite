@@ -15,8 +15,7 @@ body {
   border-bottom: 1px solid #2a1a3a;
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  justify-content: space-between;
 }
 
 .header h1 {
@@ -27,50 +26,124 @@ body {
   white-space: nowrap;
 }
 
-.header .api-group {
+.hamburger-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color 0.2s;
+}
+.hamburger-btn:hover { color: #ccc; }
+
+/* 設定モーダル */
+.settings-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+.settings-overlay.open { display: flex; }
+
+.settings-modal {
+  background: #1a1a2a;
+  border-left: 1px solid #2a1a3a;
+  width: min(360px, 90vw);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  animation: slide-in 0.2s ease;
+}
+@keyframes slide-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.settings-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid #2a1a3a;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: #aaa;
+}
+.settings-header button {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.settings-header button:hover { color: #ccc; }
+
+.settings-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-label {
+  font-size: 0.75rem;
+  color: #6a5a8a;
+  margin-top: 8px;
+}
+
+.api-key-row {
+  display: flex;
   gap: 6px;
-  margin-left: auto;
 }
+.api-key-row input { flex: 1; }
 
-.header input[type="password"],
-.header input[type="text"] {
-  width: 200px;
-  padding: 6px 10px;
-  background: #1a1a2a;
+.settings-body input[type="password"],
+.settings-body input[type="text"],
+.settings-body input[type="url"],
+.settings-body select,
+.settings-body textarea {
+  width: 100%;
+  padding: 8px 10px;
+  background: #12101f;
   border: 1px solid #3a2a5a;
-  border-radius: 6px;
+  border-radius: 8px;
   color: #e0d0f0;
-  font-size: 0.8rem;
-  font-family: monospace;
+  font-size: 0.85rem;
+  font-family: inherit;
 }
+.settings-body textarea { min-height: 120px; resize: vertical; }
+.settings-body input:focus,
+.settings-body select:focus,
+.settings-body textarea:focus { outline: none; border-color: #b366ff; }
 
-.header input:focus { outline: none; border-color: #b366ff; }
-
-.header button {
-  padding: 6px 8px;
+.api-key-row button {
+  padding: 6px 10px;
   background: none;
   border: 1px solid #3a2a5a;
-  border-radius: 6px;
+  border-radius: 8px;
+  color: #888;
   cursor: pointer;
   font-size: 0.85rem;
 }
 
-.header label {
-  font-size: 0.7rem;
-  color: #6a5a8a;
+.settings-actions {
   display: flex;
-  align-items: center;
-  gap: 3px;
-  cursor: pointer;
-  white-space: nowrap;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
 }
 
 .chat-area {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+  padding-bottom: 80px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -116,7 +189,7 @@ body {
 /* Mascot bust-up */
 .mascot-bustup {
   position: fixed;
-  bottom: 65px;
+  bottom: calc(var(--input-area-h, 65px) + 8px);
   right: -60px;
   pointer-events: none;
   opacity: 0.6;
@@ -125,7 +198,9 @@ body {
 }
 .mascot-bustup:hover { opacity: 1; }
 .mascot-bustup.hidden { display: none; }
-@media (max-width: 600px) { .mascot-bustup { right: 5px; opacity: 0.6; } }
+@media (max-width: 600px) {
+  .mascot-bustup { right: 5px; opacity: 0.6; width: 25%; }
+}
 
 .msg.bot strong { color: #b366ff; }
 .msg.bot a { color: #b366ff; }
@@ -164,29 +239,127 @@ body {
   80%, 100% { content: '...'; }
 }
 
+/* 音声テキストオーバーレイ */
+.input-preview-overlay {
+  position: fixed;
+  bottom: 70px;
+  left: 20px;
+  right: 20px;
+  z-index: 9;
+  background: rgba(10, 10, 26, 0.5);
+  border-radius: 12px;
+  padding: 10px 40px 10px 14px;
+  display: none;
+}
+.input-preview-overlay.visible { display: block; }
+
+.input-preview {
+  font-size: 0.95rem;
+  color: #ddd;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.input-preview.interim { color: #888; font-style: italic; }
+
+/* クリアボタン（右上赤丸） */
+.clear-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50% !important;
+  background: #952826 !important;
+  border: none !important;
+  color: #fff !important;
+  font-size: 0.6rem !important;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+}
+
 .input-area {
-  padding: 12px 20px;
   background: #12101f;
   border-top: 1px solid #2a1a3a;
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-.input-area textarea {
-  flex: 1;
-  padding: 10px 14px;
-  background: #1a1a2a;
-  border: 1px solid #3a2a5a;
-  border-radius: 12px;
-  color: #e0d0f0;
-  font-size: 0.9rem;
-  font-family: inherit;
-  resize: none;
-  max-height: 120px;
-  line-height: 1.4;
+/* ナビバー */
+.input-bar {
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
 }
 
-.input-area textarea:focus { outline: none; border-color: #b366ff; }
+/* 送信ボタンをセンター */
+.send-btn {
+  position: absolute !important;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* マイクボタン */
+.mic-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50% !important;
+  padding: 0 !important;
+  font-size: 1.2rem !important;
+  flex-shrink: 0;
+  background: #1a1a2a !important;
+  border: 1px solid #3a2a5a !important;
+  color: #aaa !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mic-btn:hover { border-color: #b366ff !important; color: #b366ff !important; }
+.mic-btn.listening {
+  background: #3a0d0d !important;
+  border-color: #e53935 !important;
+  color: #e53935 !important;
+  animation: mic-pulse 1s infinite;
+}
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229,57,53,0.4); }
+  50% { box-shadow: 0 0 0 10px rgba(229,57,53,0); }
+}
+
+/* 送信ボタン */
+.send-btn {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+  font-size: 1.3rem !important;
+  background: linear-gradient(135deg, #b366ff, #7c3aed) !important;
+  border: none !important;
+  color: #fff !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.send-btn:hover { opacity: 0.85; }
+.send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.input-area textarea,
+.hidden { display: none !important; }
 
 .input-area button {
   padding: 10px 20px;
@@ -204,9 +377,11 @@ body {
 .input-area button:hover { opacity: 0.85; }
 .input-area button:disabled { opacity: 0.4; cursor: not-allowed; }
 
+
+
 /* マイクボタン */
 .mic-btn {
-  display: none; /* PC では非表示 */
+  display: flex; /* PC でも表示 */
   width: 44px;
   height: 44px;
   border-radius: 50% !important;
@@ -227,21 +402,7 @@ body {
 }
 
 @media (max-width: 600px) {
-  .mic-btn { display: flex; align-items: center; justify-content: center; }
-  /* スマホではtextareaを初期非表示、フォーカス時に展開 */
-  .input-area textarea {
-    max-width: 0;
-    padding: 0;
-    border: none;
-    overflow: hidden;
-    transition: max-width 0.3s, padding 0.3s;
-  }
-  .input-area textarea.expanded {
-    max-width: 100%;
-    flex: 1;
-    padding: 10px 14px;
-    border: 1px solid #3a2a5a;
-  }
+  .mic-btn { align-items: center; justify-content: center; }
 }
 
 .welcome {
