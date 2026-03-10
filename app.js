@@ -815,7 +815,6 @@ async function sendMessage() {
   } finally {
     isLoading = false;
     abortController = null;
-    sendBtn.textContent = "送信";
     sendBtn.title = "";
     sendBtn.disabled = false;
     userInput.focus();
