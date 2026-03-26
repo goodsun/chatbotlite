@@ -128,14 +128,15 @@ async function loadSoul() {
     }
   }
 
-  // knowledge.txt → append to system prompt — only if specified in config
+  // knowledge.txt → stored separately and injected into user messages (not system prompt)
+  // to prevent prompt injection via external knowledge files.
   if (soulConfig.knowledge) {
     try {
       const res = await fetch(soulConfig.knowledge);
       if (res.ok) {
         const text = await res.text();
         if (text.trim()) {
-          systemPrompt.value += "\n\n【参考知識】\n" + text.trim();
+          soulConfig._knowledge = text.trim();
         }
       }
     } catch (e) {
@@ -736,7 +737,26 @@ async function sendMessage() {
     const ragContext = await ragSearch(text);
 
     const model = modelSelect.value;
-    const sysText = getSystemPromptWithMemory() + ragContext;
+    const sysText = getSystemPromptWithMemory();
+
+    // Build contents: inject RAG context and knowledge into the last user message
+    // to prevent prompt injection via external RAG results or knowledge files.
+    let contents = chatHistory;
+    const knowledgeContext = soulConfig._knowledge
+      ? "\n\n【参考知識】\n" + soulConfig._knowledge
+      : "";
+    const ragRaw = ragContext
+      ? "\n\n【参考情報（RAG検索結果）】\n" + ragContext.replace(/^\n+【参考情報（RAG検索結果）】\n/, "")
+      : "";
+    if (knowledgeContext || ragRaw) {
+      contents = chatHistory.slice(0, -1).concat([
+        {
+          role: "user",
+          parts: [{ text: text + knowledgeContext + ragRaw }],
+        },
+      ]);
+    }
+
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
@@ -744,7 +764,7 @@ async function sendMessage() {
         headers: { "Content-Type": "application/json", "x-goog-api-key": key },
         body: JSON.stringify({
           system_instruction: { parts: [{ text: sysText }] },
-          contents: chatHistory,
+          contents: contents,
           generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
         }),
         signal: abortController.signal,
