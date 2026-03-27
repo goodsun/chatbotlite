@@ -717,6 +717,7 @@ async function sendMessage() {
   userInput.value = "";
   savedText = "";
   updatePreview("");
+  micRestartForSend(); // stop recognition to reset e.results accumulation
   userInput.dispatchEvent(new Event("input"));
   userInput.style.height = "auto";
   isLoading = true;
@@ -844,7 +845,9 @@ async function sendMessage() {
 }
 
 // ===== 音声入力（スマホ向け） =====
-let savedText = ""; // hoisted so sendMessage() can clear it on send
+let savedText = "";
+let micListening = false;
+let micRecognition = null;
 const micBtn = document.getElementById("micBtn");
 const inputPreview = document.getElementById("inputPreview");
 const clearBtn = document.getElementById("clearBtn");
@@ -867,18 +870,26 @@ function updatePreview(text, isInterim = false) {
   }
 }
 
+// Stop recognition and restart to reset e.results accumulation
+function micRestartForSend() {
+  if (!micListening || !micRecognition) return;
+  savedText = "";
+  micRecognition.stop(); // onend will fire; auto-restart suppressed by savedText=""
+}
+
 if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
   const recognition = new SpeechRecognition();
+  micRecognition = recognition;
   recognition.lang = "ja-JP";
   recognition.continuous = true;
   recognition.interimResults = true;
 
-  let listening = false;
+  let _pendingRestart = false;
 
   micBtn.addEventListener("click", () => {
-    if (listening) {
+    if (micListening) {
       recognition.stop();
     } else {
       savedText = userInput.value;
@@ -887,7 +898,7 @@ if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
   });
 
   recognition.onstart = () => {
-    listening = true;
+    micListening = true;
     micBtn.classList.add("listening");
     // textareaを縮めてマイクに集中
     userInput.classList.remove("expanded");
@@ -904,14 +915,20 @@ if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
   };
 
   recognition.onend = () => {
-    listening = false;
+    micListening = false;
     micBtn.classList.remove("listening");
-    savedText = userInput.value;
-    updatePreview(savedText, false);
+    if (_pendingRestart) {
+      _pendingRestart = false;
+      savedText = userInput.value;
+      setTimeout(() => recognition.start(), 300);
+    } else {
+      savedText = userInput.value;
+      updatePreview(savedText, false);
+    }
   };
 
   recognition.onerror = (e) => {
-    listening = false;
+    micListening = false;
     micBtn.classList.remove("listening");
   };
 
@@ -919,9 +936,9 @@ if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
   clearBtn.addEventListener("click", () => {
     savedText = "";
     updatePreview("");
-    if (listening) {
+    if (micListening) {
+      _pendingRestart = true;
       recognition.stop();
-      setTimeout(() => recognition.start(), 300);
     }
   });
 } else {
