@@ -919,7 +919,8 @@ if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
     }
     micRecognition._lastResultIndex = e.results.length;
     micHasInterim = !!interim;
-    sendBtn.disabled = micHasInterim; // disable send while text is unconfirmed
+    sendBtn.disabled = micHasInterim;
+    clearBtn.disabled = micHasInterim;
     updatePreview(finals + interim, !!interim);
   };
 
@@ -928,6 +929,7 @@ if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
     micBtn.classList.remove("listening");
     micHasInterim = false;
     sendBtn.disabled = false;
+    clearBtn.disabled = false;
     if (_pendingRestart) {
       _pendingRestart = false;
       savedText = userInput.value;
@@ -950,6 +952,7 @@ if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
     micResultOffset = micRecognition._lastResultIndex || 0;
     micHasInterim = false;
     sendBtn.disabled = false;
+    clearBtn.disabled = false;
     updatePreview("");
     if (micListening) {
       _pendingRestart = true;
