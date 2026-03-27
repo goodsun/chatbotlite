@@ -695,10 +695,8 @@ async function ragSearch(query) {
     const data = await res.json();
     const results = data.results || [];
     if (results.length === 0) return "";
-    return (
-      "\n\n【参考情報（RAG検索結果）】\n" +
-      results.map((r, i) => `[${i + 1}] ${r}`).join("\n\n")
-    );
+    // Return raw data only; caller adds the prefix label
+    return results.map((r, i) => `[${i + 1}] ${r}`).join("\n\n");
   } catch (e) {
     console.warn("RAG search failed:", e);
     return "";
@@ -724,6 +722,7 @@ async function sendMessage() {
   isLoading = true;
   abortController = new AbortController();
   sendBtn.title = "Stop";
+  sendBtn.classList.add("is-loading");
 
   addMessage("user", text);
   chatHistory.push({ role: "user", parts: [{ text }] });
@@ -750,7 +749,7 @@ async function sendMessage() {
       ? "\n\n【参考知識】\n" + soulConfig._knowledge
       : "";
     const ragRaw = ragContext
-      ? "\n\n【参考情報（RAG検索結果）】\n" + ragContext.replace(/^\n+【参考情報（RAG検索結果）】\n/, "")
+      ? "\n\n【参考情報（RAG検索結果）】\n" + ragContext
       : "";
     if (knowledgeContext || ragRaw) {
       contents = chatHistory.slice(0, -1).concat([
@@ -840,6 +839,7 @@ async function sendMessage() {
     isLoading = false;
     abortController = null;
     sendBtn.title = "";
+    sendBtn.classList.remove("is-loading");
     sendBtn.disabled = false;
     userInput.focus();
   }

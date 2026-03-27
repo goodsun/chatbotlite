@@ -362,6 +362,8 @@ body {
 }
 .send-btn:hover { opacity: 0.85; }
 .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.send-btn.is-loading { opacity: 0.7; cursor: pointer; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
 
 .input-area textarea,
 .hidden { display: none !important; }
