@@ -718,7 +718,7 @@ async function sendMessage() {
   userInput.value = "";
   savedText = "";
   updatePreview("");
-  micRestartForSend(); // stop recognition to reset e.results accumulation
+  micResetOnSend(); // advance result offset so past results are ignored
   userInput.dispatchEvent(new Event("input"));
   userInput.style.height = "auto";
   isLoading = true;
@@ -849,6 +849,8 @@ async function sendMessage() {
 let savedText = "";
 let micListening = false;
 let micRecognition = null;
+let micResultOffset = 0; // index of first result after last send
+let micHasInterim = false; // true while unconfirmed interim text is present
 const micBtn = document.getElementById("micBtn");
 const inputPreview = document.getElementById("inputPreview");
 const clearBtn = document.getElementById("clearBtn");
@@ -871,11 +873,11 @@ function updatePreview(text, isInterim = false) {
   }
 }
 
-// Stop recognition and restart to reset e.results accumulation
-function micRestartForSend() {
-  if (!micListening || !micRecognition) return;
+// On send: advance offset so past results are ignored, keep mic running
+function micResetOnSend() {
+  if (!micRecognition) return;
   savedText = "";
-  micRecognition.stop(); // onend will fire; auto-restart suppressed by savedText=""
+  micResultOffset = micRecognition._lastResultIndex || 0;
 }
 
 if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
@@ -908,19 +910,28 @@ if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
   recognition.onresult = (e) => {
     let interim = "";
     let finals = savedText;
-    for (let i = 0; i < e.results.length; i++) {
-      if (e.results[i].isFinal) finals += e.results[i][0].transcript;
-      else interim += e.results[i][0].transcript;
+    for (let i = micResultOffset; i < e.results.length; i++) {
+      if (e.results[i].isFinal) {
+        finals += e.results[i][0].transcript;
+      } else {
+        interim += e.results[i][0].transcript;
+      }
     }
+    micRecognition._lastResultIndex = e.results.length;
+    micHasInterim = !!interim;
+    sendBtn.disabled = micHasInterim; // disable send while text is unconfirmed
     updatePreview(finals + interim, !!interim);
   };
 
   recognition.onend = () => {
     micListening = false;
     micBtn.classList.remove("listening");
+    micHasInterim = false;
+    sendBtn.disabled = false;
     if (_pendingRestart) {
       _pendingRestart = false;
       savedText = userInput.value;
+      micResultOffset = 0;
       setTimeout(() => recognition.start(), 300);
     } else {
       savedText = userInput.value;
@@ -936,6 +947,9 @@ if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
   // クリアボタン
   clearBtn.addEventListener("click", () => {
     savedText = "";
+    micResultOffset = micRecognition._lastResultIndex || 0;
+    micHasInterim = false;
+    sendBtn.disabled = false;
     updatePreview("");
     if (micListening) {
       _pendingRestart = true;
